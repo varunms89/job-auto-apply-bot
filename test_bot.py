@@ -5,22 +5,27 @@ from config import USER_CONFIG
 
 class TestJobBot(unittest.TestCase):
     def test_qa_fresher_job_matching(self):
-        title = "Junior Software QA Tester - Fresher / Trainee"
-        desc = "Looking for entry level candidates or BCA graduates with basic testing knowledge, manual testing, and bug tracking."
+        title = "Junior Software QA Tester - Remote / Work From Home"
+        desc = "100% Remote / Work from home position for freshers and BCA graduates. Knowledge of manual testing, test cases, and bug tracking."
         company = "TechCorp Solutions"
-        location = "Bangalore"
+        location = "Remote / Anywhere"
 
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertGreaterEqual(score, 50.0)
-        self.assertIn("QA role", reasons)
-        print(f"\n[Test Match 1] Score: {score} | Reasons: {reasons}")
+        self.assertIn("Software Tester", reasons)
+        self.assertIn("Work From Home", reasons)
+        print(f"\n[Test Match 1 - WFH Tester] Score: {score} | Reasons: {reasons}")
 
-    def test_senior_role_filter(self):
-        title = "Senior QA Automation Lead (8+ years experience)"
-        desc = "Must have 8+ years leading testing teams."
-        score, reasons = evaluate_job_match(title, desc, "Enterprise Inc", "Bangalore")
+    def test_onsite_rejection(self):
+        title = "Junior Software QA Tester"
+        desc = "Strictly on-site position at office."
+        company = "OfficeCorp"
+        location = "Mumbai Office Only"
+
+        score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertEqual(score, 0.0)
-        print(f"[Test Match 2 - Senior Filter] Score: {score} | Filtered: {reasons}")
+        self.assertIn("does not offer Work From Home", reasons)
+        print(f"[Test Match On-Site Rejection] Score: {score} | Filtered: {reasons}")
 
     def test_auto_apply_payload(self):
         engine = AutoApplyEngine(dry_run=True)

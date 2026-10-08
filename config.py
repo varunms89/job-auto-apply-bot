@@ -17,27 +17,24 @@ class UserProfile:
     college: str = "Government Science College (GSC), Hassan"
     experience_level: str = "Fresher / Final Year Student / Intern"
     roles_targeted: List[str] = field(default_factory=lambda: [
-        "Software Tester",
-        "QA Intern",
-        "QA Engineer",
-        "Quality Assurance Tester",
-        "Manual Tester",
-        "Automation Tester",
-        "Junior QA Analyst",
-        "QA Trainee",
-        "Graduate Engineer Trainee - QA"
+        "Software Tester (Work From Home)",
+        "Remote Software Tester",
+        "QA Tester (WFH / Remote)",
+        "Manual Tester (Work From Home)",
+        "Remote QA Intern",
+        "Remote Quality Assurance Tester"
     ])
     skills: List[str] = field(default_factory=lambda: [
         "Software Testing",
         "Manual Testing",
-        "Test Cases Design",
-        "Bug Reporting",
-        "QA Testing",
-        "AI / ML Tools",
+        "Remote QA Testing",
+        "Test Cases Design & Execution",
+        "Bug Tracking & Reporting",
+        "JIRA",
+        "Postman (API Testing Basics)",
         "Python",
-        "App Development",
-        "SDLC / STLC Basics"
+        "AI / ML Tools"
     ])
-    bio: str = "Computer applications student (BCA) looking for first work experience in QA / Software Testing / Entry-level Software Development. Passionate about AI skills, apps, and bug tracking."
+    bio: str = "Final Year BCA student dedicated strictly to Software Tester roles working remotely (Work From Home). Strong foundation in manual testing, bug tracking, and test execution."
 
 USER_CONFIG = UserProfile()
