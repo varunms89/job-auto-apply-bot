@@ -56,11 +56,21 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
     if skill_hits:
         reasons.append(f"Skills present: {', '.join(skill_hits[:5])}")
 
-    # 5. Qualification / Degree
-    if "bca" in full_text or "computer applications" in full_text or "any degree" in full_text:
-        score += 10.0
-        reasons.append("Matches BCA or Any Degree requirement")
-
     # Cap score at 100
     final_score = min(score, 100.0)
+
+    # 6. Remote / Work From Home (WFH) Preference Boost
+    wfh_terms = ["remote", "work from home", "wfh", "anywhere", "telecommute", "home-based", "virtual"]
+    is_wfh = any(term in full_text or term in location.lower() for term in wfh_terms)
+    
+    if is_wfh:
+        final_score += 25.0
+        reasons.append("⭐️ Matches Work From Home (WFH) / Remote preference")
+    else:
+        # If explicitly on-site only with no remote flexibility, give slight penalty
+        if any(term in full_text for term in ["strictly on-site", "relocation required", "must work in office"]):
+            final_score -= 20.0
+            reasons.append("Strict on-site requirement")
+
+    final_score = max(0.0, min(final_score, 100.0))
     return final_score, "; ".join(reasons)

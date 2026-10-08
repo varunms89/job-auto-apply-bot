@@ -39,7 +39,7 @@ class AutoApplyEngine:
                 f"I completed my 12th standard in Commerce and am currently in my final year of Bachelor of Computer Applications (BCA) at GSC Hassan (graduating 2025). "
                 f"With practical software testing exposure, knowledge of bug tracking, manual test case design, and hands-on app development & AI skills, "
                 f"I am looking for an internship, trainee, or entry-level QA role where I can contribute to delivering high-quality software.\n\n"
-                f"I am proactive, detail-oriented, and available to join immediately.\n\n"
+                f"I am proactive, detail-oriented, fully equipped for Work From Home (Remote setup), and available to join immediately.\n\n"
                 f"Thank you,\n{self.profile.name}\nPhone: {self.profile.phone}\nEmail: {self.profile.email}\nGitHub: {self.profile.github}"
             )
         }

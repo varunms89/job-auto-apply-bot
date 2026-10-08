@@ -9,6 +9,7 @@ class UserProfile:
     email: str = "msvarun89@gmail.com"
     phone: str = "8861639284"
     location: str = "Hassan, Karnataka, India"
+    work_preference: str = "Work From Home (WFH) / Remote"
     github: str = "https://github.com/varunms89"
     degree: str = "Bachelor of Computer Applications (BCA) - Final Year"
     puc_12th: str = "12th Standard / Pre-University (Commerce)"
