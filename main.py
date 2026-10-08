@@ -16,7 +16,7 @@ def run_job_bot_cycle(auto_apply: bool = True):
     print("==================================================================")
 
     init_db()
-    apply_engine = AutoApplyEngine(dry_run=True)
+    apply_engine = AutoApplyEngine(dry_run=False)
 
     # 1. Tech / QA Jobs Search
     print("\n🔍 Fetching latest Software Tester / QA job postings across platforms...")
