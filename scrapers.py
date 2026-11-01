@@ -81,11 +81,69 @@ def search_arbeitnow_jobs() -> List[Dict]:
         print(f"[ArbeitNow] Notice: {e}")
     return jobs
 
+def search_remotive_jobs() -> List[Dict]:
+    """
+    Remotive API for remote QA and testing jobs.
+    """
+    jobs = []
+    try:
+        url = "https://remotive.com/api/remote-jobs?search=qa"
+        data = fetch_json(url)
+        for item in data.get('jobs', []):
+            title = item.get('title', '')
+            company = item.get('company_name', '')
+            url_link = item.get('url', '')
+            location = item.get('candidate_required_location', 'Remote / Worldwide')
+            desc = re.sub(r'<[^>]+>', ' ', item.get('description', ''))[:2000]
+
+            jobs.append({
+                "job_id": f"remotive_{item.get('id', hash(url_link))}",
+                "platform": "Remotive",
+                "title": title,
+                "company": company,
+                "location": location,
+                "url": url_link,
+                "description": desc
+            })
+    except Exception as e:
+        print(f"[Remotive] Notice: {e}")
+    return jobs
+
+def search_jobicy_jobs() -> List[Dict]:
+    """
+    Jobicy API for remote engineering & testing jobs.
+    """
+    jobs = []
+    try:
+        url = "https://jobicy.com/api/v2/remote-jobs?count=50&industry=engineering"
+        data = fetch_json(url)
+        for item in data.get('jobs', []):
+            title = item.get('jobTitle', '')
+            company = item.get('companyName', '')
+            url_link = item.get('url', '')
+            location = item.get('jobGeo', 'Remote / Worldwide')
+            desc = re.sub(r'<[^>]+>', ' ', item.get('jobExcerpt', ''))[:2000]
+
+            jobs.append({
+                "job_id": f"jobicy_{item.get('id', hash(url_link))}",
+                "platform": "Jobicy",
+                "title": title,
+                "company": company,
+                "location": location,
+                "url": url_link,
+                "description": desc
+            })
+    except Exception as e:
+        print(f"[Jobicy] Notice: {e}")
+    return jobs
+
 def search_all_portals() -> List[Dict]:
     results = []
-    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow)...")
+    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy)...")
     results.extend(search_remoteok_jobs())
     results.extend(search_arbeitnow_jobs())
+    results.extend(search_remotive_jobs())
+    results.extend(search_jobicy_jobs())
 
     # Deduplicate
     seen = set()
