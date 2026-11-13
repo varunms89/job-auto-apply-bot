@@ -22,7 +22,7 @@ class UserProfile:
     email: str = "msvarun89@gmail.com"
     phone: str = "8861639284"
     location: str = "Hassan, Karnataka, India"
-    work_preference: str = "Remote / Work From Home & Bangalore / Karnataka Hybrid / On-site"
+    work_preference: str = "100% Online / Remote / Work From Home (WFH) Only"
     github: str = "https://github.com/varunms89"
     linkedin: str = "https://www.linkedin.com/in/varun-m-s-8861639284"
     degree: str = "Bachelor of Computer Applications (BCA) - Final Year"
@@ -55,6 +55,6 @@ class UserProfile:
         "Git & GitHub",
         "Troubleshooting & Problem Solving"
     ])
-    bio: str = "Final Year BCA student passionate about Software Testing / QA, AI internships, and Python/software engineering internships across Remote / WFH and Bangalore / Karnataka."
+    bio: str = "Final Year BCA student actively targeting 100% Online / Remote / Work From Home internships and entry-level roles in Software Testing / QA, AI, and Python programming."
 
 USER_CONFIG = UserProfile()

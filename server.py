@@ -745,7 +745,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
             <div class="container">
                 <h1>🤖 Autonomous Job & Assessment Dashboard</h1>
-                <p class="subtitle">Candidate: <b>VARUN M S</b> (BCA Final Year, 2025) &nbsp;|&nbsp; Preference: <b>Online / Remote Internships & Jobs</b></p>
+                <p class="subtitle">Candidate: <b>VARUN M S</b> (BCA Final Year, 2025) &nbsp;|&nbsp; Preference: <b style="color:#16a34a;">100% Online / Remote Only (Work From Home)</b></p>
                 
                 <div class="grid">
                     <div class="stat-card red">

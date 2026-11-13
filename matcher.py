@@ -4,10 +4,11 @@ from config import USER_CONFIG
 
 def evaluate_job_match(title: str, description: str, company: str, location: str) -> Tuple[float, str]:
     """
-    EXPANDED MATCHING STRATEGY (Option C):
-    1. Roles: Software Tester / QA / Quality Assurance / Test Engineer
-              + Allied Tech Roles: Technical Support, QA Support, Application Support, Junior Developer / Trainee.
-    2. Location / Work Mode: Remote / Work From Home OR Bangalore / Karnataka / India (Hybrid & On-site).
+    STRICT 100% ONLINE / REMOTE / WFH MATCHING STRATEGY:
+    1. Location / Work Mode: 100% ONLINE / REMOTE / WORK FROM HOME (WFH) ONLY.
+       Rejects all physical on-site or in-office jobs, even if based in Bangalore/India.
+    2. Roles: Software Tester / QA / Quality Assurance / Test Engineer
+              + Allied Tech Roles: AI/Python Intern, Technical Support, Application Support, Junior Developer / Trainee.
     3. Seniority: Rejects Senior, Lead, Principal, Manager, 5+ years.
     """
     full_text = f"{title} {description} {company} {location}".lower()
@@ -58,41 +59,45 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
             else:
                 return 0.0, "Rejected: Role is not QA, AI/Programming internship, or technical support role"
 
-    # 3. Location / Work Mode Matching (High priority to Online / Remote / WFH)
-    online_terms = ["remote", "work from home", "wfh", "online", "virtual", "telecommute", "home-based", "anywhere", "worldwide"]
-    india_loc_terms = ["bangalore", "bengaluru", "karnataka", "india", "hassan", "hyderabad", "chennai", "pune"]
+    # 3. Location / Work Mode Matching (STRICTLY 100% ONLINE / REMOTE / WFH ONLY)
+    online_terms = [
+        "remote", "work from home", "wfh", "online", "virtual", 
+        "telecommute", "home-based", "anywhere", "worldwide", "remote / wfh"
+    ]
+    
+    # Check for hard on-site / in-office exclusions
+    strict_onsite_flags = [
+        "on-site only", "onsite only", "work from office only", "wfo only", 
+        "strictly in-office", "no remote", "not a remote", "in-person only"
+    ]
+    if any(flag in full_text for flag in strict_onsite_flags):
+        return 0.0, "Rejected: Explicitly on-site / in-office role (User policy: 100% Online / Remote Only)"
 
     is_online_remote = any(term in full_text for term in online_terms)
-    is_local_india = any(loc in full_text for loc in india_loc_terms)
+    if not is_online_remote:
+        return 0.0, "Rejected: Not an Online / Remote / WFH role (User policy: 100% Online / Remote Only)"
 
-    if not (is_online_remote or is_local_india):
-        return 0.0, "Rejected: Location is neither Online/Remote/WFH nor Bangalore/Karnataka/India"
-
-    # 4. Score Calculation (Strong preference to Online / WFH)
+    # 4. Score Calculation (100% Online / Remote / WFH Guaranteed)
     score = 40.0
     reasons = []
 
     if is_primary_qa:
-        score += 20.0
+        score += 25.0
         reasons.append("🎯 Direct Software Tester / QA role")
     elif is_ai_or_coding:
-        score += 20.0
+        score += 25.0
         reasons.append("🤖 AI & Programming Internship role")
     else:
-        score += 10.0
+        score += 15.0
         reasons.append("🛠️ Allied Tech Support / Trainee role")
 
-    # TOP PREFERENCE BOOST: Online / Virtual / Remote / WFH
-    if is_online_remote:
-        score += 30.0  # +30 points top preference boost
-        reasons.append("⭐️ TOP PREFERENCE: Online / Remote / WFH Internship/Job")
-    elif is_local_india:
-        score += 10.0
-        reasons.append("📍 Local Bangalore / Karnataka / India location")
+    # 100% Online / WFH Confirmation
+    score += 25.0
+    reasons.append("🌐 100% Online / Remote / WFH Opportunity")
 
     # Internship / Fresher boost
     if "intern" in title_lower or "internship" in title_lower:
-        score += 15.0
+        score += 10.0
         reasons.append("🎓 Preferred Internship opportunity")
     elif any(k in full_text for k in ["fresher", "trainee", "entry level", "junior", "graduate", "0-1", "0-2"]):
         score += 10.0

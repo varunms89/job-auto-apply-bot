@@ -13,7 +13,7 @@ class TestJobBot(unittest.TestCase):
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertGreaterEqual(score, 50.0)
         self.assertIn("Software Tester", reasons)
-        self.assertIn("TOP PREFERENCE: Online / Remote / WFH", reasons)
+        self.assertIn("100% Online / Remote / WFH Opportunity", reasons)
         print(f"\n[Test Match 1 - WFH Tester] Score: {score} | Reasons: {reasons}")
 
     def test_onsite_rejection(self):
@@ -24,19 +24,32 @@ class TestJobBot(unittest.TestCase):
 
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertEqual(score, 0.0)
-        self.assertIn("neither Online/Remote/WFH nor Bangalore/Karnataka/India", reasons)
+        self.assertIn("100% Online / Remote Only", reasons)
         print(f"[Test Match On-Site Rejection] Score: {score} | Filtered: {reasons}")
 
-    def test_bangalore_qa_matching(self):
+    def test_bangalore_onsite_rejection(self):
+        # Under "Only Online" policy, physical in-office roles in Bangalore are rejected
         title = "QA Intern - Manual Testing"
-        desc = "Looking for freshers / BCA graduates for manual test cases and defect tracking in Bangalore."
+        desc = "Looking for freshers / BCA graduates for manual test cases and defect tracking in our Bangalore office."
         company = "Bengaluru Tech Labs"
-        location = "Bangalore, India"
+        location = "Bangalore, India (On-site only)"
+
+        score, reasons = evaluate_job_match(title, desc, company, location)
+        self.assertEqual(score, 0.0)
+        self.assertIn("100% Online / Remote Only", reasons)
+        print(f"[Test Match Bangalore On-Site Filtered] Score: {score} | Filtered: {reasons}")
+
+    def test_bangalore_remote_matching(self):
+        # Online / WFH roles for Bangalore companies are accepted
+        title = "QA Intern - Manual Testing"
+        desc = "100% Work from home / online internship for BCA graduates testing e-commerce apps."
+        company = "Bengaluru Tech Labs"
+        location = "Bangalore / Remote"
 
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertGreaterEqual(score, 50.0)
-        self.assertIn("Bangalore / Karnataka / India", reasons)
-        print(f"[Test Match Bangalore QA] Score: {score} | Reasons: {reasons}")
+        self.assertIn("100% Online / Remote / WFH Opportunity", reasons)
+        print(f"[Test Match Bangalore Online/Remote] Score: {score} | Reasons: {reasons}")
 
     def test_ai_internship_matching(self):
         title = "Artificial Intelligence Intern"
@@ -117,7 +130,7 @@ class TestJobBot(unittest.TestCase):
 
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertGreaterEqual(score, 70.0)
-        self.assertIn("TOP PREFERENCE: Online / Remote / WFH", reasons)
+        self.assertIn("100% Online / Remote / WFH Opportunity", reasons)
         print(f"\n[Test Internshala Match] Score: {score} | Reasons: {reasons}")
 
     def test_hr_screening_and_starring(self):
