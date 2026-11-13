@@ -245,3 +245,126 @@ print("Accuracy:", accuracy_score(y_test, preds))
 
 def get_prep_module(topic_key: str) -> Dict[str, Any]:
     return PREP_MODULES.get(topic_key.lower(), PREP_MODULES["qa"])
+
+QA_PRACTICE_QUESTIONS = [
+    {
+        "id": 1,
+        "question": "The company logo on the public login page is misspelled as 'Amezon' instead of 'Amazon'. How should this bug be categorized?",
+        "options": [
+            "High Severity, High Priority",
+            "Low Severity, High Priority",
+            "High Severity, Low Priority",
+            "Low Severity, Low Priority"
+        ],
+        "answer": 1,
+        "explanation": "Low Severity because the core application functionality (login) still works completely, but High Priority because the brand image is immediately visible to public users."
+    },
+    {
+        "id": 2,
+        "question": "An input field accepts user age between 18 and 60 years. Using 2-value Boundary Value Analysis (BVA), which boundary test cases should be tested?",
+        "options": [
+            "10, 25, 75",
+            "18, 30, 60",
+            "17, 18, 19, 59, 60, 61",
+            "0, 18, 60, 100"
+        ],
+        "answer": 2,
+        "explanation": "BVA focuses on values directly on and just around the borders: Min-1 (17), Min (18), Min+1 (19), Max-1 (59), Max (60), Max+1 (61)."
+    },
+    {
+        "id": 3,
+        "question": "In which phase of the Software Testing Life Cycle (STLC) are test cases, test data, and preconditions authored?",
+        "options": [
+            "Requirement Analysis",
+            "Test Planning",
+            "Test Case Development",
+            "Test Execution"
+        ],
+        "answer": 2,
+        "explanation": "Test Case Development is the STLC phase where QA engineers create, review, and rework detailed test cases and test data."
+    },
+    {
+        "id": 4,
+        "question": "A developer fixes a reported defect and marks it as FIXED. What is the immediate next state for the QA tester to execute?",
+        "options": [
+            "Close Defect",
+            "Retest / Pending Retest",
+            "Assign to Manager",
+            "Deferred"
+        ],
+        "answer": 1,
+        "explanation": "Once a defect is marked FIXED, it moves to 'Pending Retest' where QA verifies the fix in the test environment before closing it."
+    },
+    {
+        "id": 5,
+        "question": "When an API endpoint successfully creates a new user record via POST, which HTTP status code should the server return?",
+        "options": [
+            "200 OK",
+            "201 Created",
+            "204 No Content",
+            "302 Redirect"
+        ],
+        "answer": 1,
+        "explanation": "HTTP 201 Created indicates that the request has succeeded and a new resource has been created on the server."
+    },
+    {
+        "id": 6,
+        "question": "What is the key technical difference between HTTP status code 401 Unauthorized and 403 Forbidden?",
+        "options": [
+            "401 means server error; 403 means client error",
+            "401 is for GET requests; 403 is for POST requests",
+            "401 means authentication is missing/invalid; 403 means authenticated but user lacks authorization permission",
+            "There is no difference; they are interchangeable"
+        ],
+        "answer": 2,
+        "explanation": "401 means you are not logged in or your token is invalid. 403 means the server knows who you are, but you do not have permission to view that resource."
+    },
+    {
+        "id": 7,
+        "question": "What is the primary objective of Regression Testing?",
+        "options": [
+            "Test if the system handles extreme high user load",
+            "Verify that recent code modifications or bug fixes have not broken existing functionality",
+            "Ensure the UI looks pretty on mobile screens",
+            "Check security against SQL injection attacks"
+        ],
+        "answer": 1,
+        "explanation": "Regression testing ensures that new changes or bug fixes have not introduced side effects or broken previously working modules."
+    },
+    {
+        "id": 8,
+        "question": "A coupon discount applies only to cart purchases between ₹1,000 and ₹5,000. How many equivalence partitions should be identified?",
+        "options": [
+            "1 partition",
+            "2 partitions",
+            "3 partitions (Less than ₹1000, ₹1000-₹5000, Greater than ₹5000)",
+            "5 partitions"
+        ],
+        "answer": 2,
+        "explanation": "Equivalence partitioning requires: Invalid partition (<1000), Valid partition (1000-5000), and Invalid partition (>5000) = 3 total."
+    },
+    {
+        "id": 9,
+        "question": "Which software testing type evaluates internal code logic, branches, loops, and conditions without using the graphical user interface?",
+        "options": [
+            "Black-Box Testing",
+            "White-Box Testing",
+            "Usability Testing",
+            "Beta Testing"
+        ],
+        "answer": 1,
+        "explanation": "White-Box Testing (structural testing) examines internal program code, data structures, and conditional branches."
+    },
+    {
+        "id": 10,
+        "question": "What is the defining characteristic of Smoke Testing?",
+        "options": [
+            "Deep regression testing lasting several days",
+            "Testing performed only after product launch",
+            "Initial build verification testing on critical core workflows to confirm build stability",
+            "Testing network connectivity under physical fire/heat conditions"
+        ],
+        "answer": 2,
+        "explanation": "Smoke Testing (Build Verification Testing) quickly validates that the core basic functionality works before initiating comprehensive testing."
+    }
+]

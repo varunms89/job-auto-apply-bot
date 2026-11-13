@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from database import get_connection, get_job_stats, record_assessment, get_assessments, update_assessment_status
 from live_bot import run_continuous_live_bot
-from prep_assistant import PREP_MODULES
+from prep_assistant import PREP_MODULES, QA_PRACTICE_QUESTIONS
 from email_monitor import process_email_message
 from telegram_notifier import send_assessment_alert
 
@@ -148,6 +148,22 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
         py_sections = "".join([f"<div class='prep-card'><h3>{s['heading']}</h3><div>{s['content']}</div></div>" for s in PREP_MODULES["python"]["sections"]])
         ai_sections = "".join([f"<div class='prep-card'><h3>{s['heading']}</h3><div>{s['content']}</div></div>" for s in PREP_MODULES["ai"]["sections"]])
 
+        quiz_cards = []
+        for q in QA_PRACTICE_QUESTIONS:
+            qid = q["id"]
+            opts = "".join([f"<label style='display:block; margin:6px 0; cursor:pointer;'><input type='radio' name='q_{qid}' value='{i}'> {opt}</label>" for i, opt in enumerate(q["options"])])
+            quiz_cards.append(f"""
+            <div class='prep-card' id='qcard_{qid}' style='border-left-color:#8b5cf6;'>
+                <div style='font-weight:600; color:#0f172a; margin-bottom:8px;'>{qid}. {q['question']}</div>
+                {opts}
+                <div class='explanation' id='expl_{qid}' style='display:none; margin-top:10px; padding:10px; border-radius:6px; font-size:0.88rem; background:#f1f5f9;'>
+                    <b>Correct Answer:</b> {q['options'][q['answer']]}<br>
+                    <span style='color:#475569;'>💡 {q['explanation']}</span>
+                </div>
+            </div>
+            """)
+        quiz_sections = "".join(quiz_cards)
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -162,14 +178,15 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 .container {{ max-width: 1100px; margin: 30px auto; padding: 0 20px; }}
                 h1 {{ color: #0f172a; margin-bottom: 5px; }}
                 .subtitle {{ color: #64748b; margin-bottom: 25px; }}
-                .tabs {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }}
-                .tab-btn {{ background: white; border: 1px solid #cbd5e1; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; color: #475569; }}
+                .tabs {{ display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }}
+                .tab-btn {{ background: white; border: 1px solid #cbd5e1; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; color: #475569; }}
                 .tab-btn.active {{ background: #2563eb; color: white; border-color: #2563eb; }}
                 .tab-content {{ display: none; }}
                 .tab-content.active {{ display: block; }}
                 .prep-card {{ background: white; padding: 20px 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; border-left: 4px solid #3b82f6; }}
                 .prep-card h3 {{ margin-top: 0; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; font-size: 1.15rem; }}
                 code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #0f172a; font-family: monospace; }}
+                #quiz-score-banner {{ display: none; padding: 15px 20px; border-radius: 8px; font-size: 1.1rem; margin-bottom: 20px; background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; font-weight: 600; text-align: center; }}
             </style>
             <script>
                 function switchTab(tabId) {{
@@ -177,6 +194,29 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                     document.getElementById('tab-' + tabId).classList.add('active');
                     document.getElementById('btn-' + tabId).classList.add('active');
+                }}
+
+                const QUIZ_ANSWERS = {{ 1: 1, 2: 2, 3: 2, 4: 1, 5: 1, 6: 2, 7: 1, 8: 2, 9: 1, 10: 2 }};
+                function checkQuiz() {{
+                    let score = 0;
+                    for (let i = 1; i <= 10; i++) {{
+                        let selected = document.querySelector('input[name="q_' + i + '"]:checked');
+                        let card = document.getElementById('qcard_' + i);
+                        let expl = document.getElementById('expl_' + i);
+                        expl.style.display = 'block';
+                        if (selected && parseInt(selected.value) === QUIZ_ANSWERS[i]) {{
+                            score++;
+                            card.style.borderLeftColor = '#22c55e';
+                            card.style.background = '#f0fdf4';
+                        }} else {{
+                            card.style.borderLeftColor = '#ef4444';
+                            card.style.background = '#fef2f2';
+                        }}
+                    }}
+                    let banner = document.getElementById('quiz-score-banner');
+                    banner.style.display = 'block';
+                    banner.innerHTML = "🎯 Your Score: <b>" + score + " / 10</b> " + (score >= 8 ? "🎉 Excellent! Ready for QA Screening!" : "💡 Keep reviewing the cheat sheet above!");
+                    window.scrollTo({{ top: banner.offsetTop - 50, behavior: 'smooth' }});
                 }}
             </script>
         </head>
@@ -199,6 +239,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <button class="tab-btn active" id="btn-qa" onclick="switchTab('qa')">🧪 Software Testing & QA</button>
                     <button class="tab-btn" id="btn-py" onclick="switchTab('py')">🐍 Python & Coding Assessment</button>
                     <button class="tab-btn" id="btn-ai" onclick="switchTab('ai')">🤖 AI & Machine Learning</button>
+                    <button class="tab-btn" id="btn-quiz" onclick="switchTab('quiz')">📝 Interactive QA Quiz (10 Qs)</button>
                 </div>
 
                 <!-- QA Tab -->
@@ -218,50 +259,21 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <p style="color: #475569; margin-bottom: 15px;">Core ML concepts, data handling in Pandas & NumPy, prompt engineering best practices, and RAG architectures.</p>
                     {ai_sections}
                 </div>
-            </div>
 
-            <!-- LinkedIn Cold Outreach Message Modal -->
-            <div id="outreachModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
-                <div style="background:white; padding:25px 30px; border-radius:10px; max-width:580px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <h3 id="modalTitle" style="margin:0; color:#0f172a; font-size:1.15rem;">✉️ LinkedIn Cold Outreach Message</h3>
-                        <span onclick="closeOutreach()" style="cursor:pointer; font-size:1.4rem; color:#64748b;">&times;</span>
-                    </div>
-                    <p style="color:#64748b; font-size:0.85rem; margin-top:0;">Send this message directly to recruiters, engineering leads, or founders on LinkedIn for this role:</p>
-                    <textarea id="outreachText" style="width:100%; height:200px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size:0.9rem; line-height:1.45; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#1e293b; resize:vertical;"></textarea>
-                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
-                        <button onclick="copyOutreach()" id="copyBtn" style="background:#2563eb; color:white; border:none; padding:9px 18px; border-radius:6px; font-weight:600; cursor:pointer;">📋 Copy to Clipboard</button>
-                        <button onclick="closeOutreach()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Close</button>
+                <!-- Quiz Tab -->
+                <div class="tab-content" id="tab-quiz">
+                    <div id="quiz-score-banner"></div>
+                    <p style="color: #475569; margin-bottom: 15px;">Select your answers and click <b>Check Score & Explanations</b> to test your knowledge for recruiter screenings:</p>
+                    {quiz_sections}
+                    <div style="text-align: center; margin: 30px 0;">
+                        <button onclick="checkQuiz()" style="background:#2563eb; color:white; border:none; padding:12px 28px; border-radius:8px; font-size:1rem; font-weight:bold; cursor:pointer;">✅ Check Score & Explanations</button>
                     </div>
                 </div>
             </div>
-
-            <script>
-                function openOutreach(company, role) {
-                    var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
-                               "I came across the " + role + " opportunity at " + company + " and wanted to reach out directly. " +
-                               "As a final-year BCA student (Government Science College, Hassan - Graduating 2025) with practical projects in " +
-                               "Manual/API Testing, Python scripting, and AI workflows (see my GitHub: https://github.com/varunms89), " +
-                               "I would love the opportunity to contribute to your team as an intern or entry-level tester.\\n\\n" +
-                               "Would you be open to a quick 5-minute conversation or reviewing my portfolio?\\n\\n" +
-                               "Best regards,\\nVARUN M S\\n+91 8861639284 | msvarun89@gmail.com\\nLinkedIn: https://www.linkedin.com/in/varun-m-s-8861639284";
-                    document.getElementById('outreachText').value = text;
-                    document.getElementById('modalTitle').innerText = "✉️ Outreach for " + company;
-                    document.getElementById('copyBtn').innerText = "📋 Copy to Clipboard";
-                    document.getElementById('outreachModal').style.display = "flex";
-                }
-                function closeOutreach() {
-                    document.getElementById('outreachModal').style.display = "none";
-                }
-                function copyOutreach() {
-                    var copyText = document.getElementById("outreachText");
-                    copyText.select();
-                    document.execCommand("copy");
-                    document.getElementById('copyBtn').innerText = "✅ Copied to Clipboard!";
-                }
-            </script>
         </body>
         </html>
+        """
+        self.wfile.write(html.encode("utf-8"))
         """
         self.wfile.write(html.encode("utf-8"))
 

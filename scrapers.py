@@ -328,9 +328,59 @@ def search_startup_remote_jobs() -> List[Dict]:
 
     return jobs
 
+def search_fresher_jobs() -> List[Dict]:
+    """
+    Scrapes entry-level and fresher tech openings (Software Tester, QA, Python)
+    from leading Indian fresher portals.
+    """
+    urls = [
+        ("https://www.freshersworld.com/jobs/jobsearch/software-tester-jobs-in-bangalore", "Software Tester Fresher", "Bangalore, India"),
+        ("https://www.freshersworld.com/jobs/jobsearch/qa-jobs-in-bangalore", "QA Analyst Fresher", "Bangalore, India"),
+        ("https://www.freshersworld.com/jobs/jobsearch/python-jobs-in-bangalore", "Python Developer Fresher", "Bangalore, India")
+    ]
+    jobs = []
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'}
+
+    for target_url, default_title, loc in urls:
+        try:
+            req = urllib.request.Request(target_url, headers=headers)
+            with urllib.request.urlopen(req, context=SSL_CTX, timeout=10) as resp:
+                html = resp.read().decode('utf-8', errors='ignore')
+                links = set(re.findall(r'href=[\"\'](https://www\.freshersworld\.com/jobs/[a-zA-Z0-9\-]+-[0-9]{5,})[\"\']', html))
+                
+                for l in list(links)[:15]:
+                    slug = l.split('/')[-1]
+                    parts = slug.split('-jobs-opening-in-')
+                    if len(parts) == 2:
+                        title = parts[0].replace('-', ' ').title()
+                        rest = parts[1].split('-at-')
+                        company = rest[0].replace('-', ' ').title()
+                    else:
+                        title = slug.replace('-', ' ').title()
+                        company = "Freshers Hiring Partner"
+                    
+                    num_id = re.sub(r'[^0-9]', '', slug)[-8:] or abs(hash(l))
+                    job_id = f"fresher_{num_id}"
+                    
+                    desc = f"Fresher Job: {title} at {company} in {loc}. Entry-level fresher hiring for BCA/graduates."
+                    
+                    jobs.append({
+                        "job_id": job_id,
+                        "platform": "Freshersworld & Monster Freshers",
+                        "title": title,
+                        "company": company,
+                        "location": loc,
+                        "url": l,
+                        "description": desc
+                    })
+        except Exception as e:
+            print(f"[Fresher Scraper] Notice for {target_url}: {e}")
+
+    return jobs
+
 def search_all_portals() -> List[Dict]:
     results = []
-    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala, Wellfound Startups)...")
+    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala, Wellfound Startups, Freshers Portals)...")
     results.extend(search_remoteok_jobs())
     results.extend(search_arbeitnow_jobs())
     results.extend(search_remotive_jobs())
@@ -338,6 +388,7 @@ def search_all_portals() -> List[Dict]:
     results.extend(search_linkedin_jobs())
     results.extend(search_internshala_internships())
     results.extend(search_startup_remote_jobs())
+    results.extend(search_fresher_jobs())
 
     # Deduplicate
     seen = set()
