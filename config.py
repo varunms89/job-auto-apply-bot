@@ -3,6 +3,19 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
+# Automatically load environment variables from local .env if present
+env_file = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(env_file):
+    try:
+        with open(env_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip())
+    except Exception:
+        pass
+
 @dataclass
 class UserProfile:
     name: str = "VARUN M S"

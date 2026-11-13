@@ -6,8 +6,10 @@ import urllib.parse
 from database import get_job_stats, get_assessments, get_connection
 from telegram_notifier import send_telegram_message
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8967390841:AAG-H6uDlZFu5ZPG0GD0cz2c0O4HfpDVwws")
-AUTHORIZED_CHAT_ID = str(os.environ.get("TELEGRAM_CHAT_ID", "6482856507"))
+from config import USER_CONFIG
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+AUTHORIZED_CHAT_ID = str(os.environ.get("TELEGRAM_CHAT_ID", ""))
 
 INTERVIEW_QUESTIONS = [
     {

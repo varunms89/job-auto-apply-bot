@@ -10,8 +10,8 @@ from config import USER_CONFIG
 # Set these in your environment or enter directly:
 # e.g., export TELEGRAM_BOT_TOKEN="your_token"
 #       export TELEGRAM_CHAT_ID="your_chat_id"
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8967390841:AAG-H6uDlZFu5ZPG0GD0cz2c0O4HfpDVwws")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "6482856507")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 DEFAULT_REPLY_KEYBOARD = {
     "keyboard": [
