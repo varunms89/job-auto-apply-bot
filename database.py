@@ -2,8 +2,18 @@ import os
 import sqlite3
 from typing import Optional, List, Dict, Any
 
-# Checks for DATABASE_URL environment variable for PostgreSQL (Supabase / Render / Railway / Neon)
+# Checks for DATABASE_URL environment variable or local .env
 DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    # Auto-load from .env if present
+    env_file = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_file):
+        with open(env_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("DATABASE_URL="):
+                    DATABASE_URL = line.split("=", 1)[1].strip()
+                    break
 
 # Local fallback to SQLite
 DB_PATH = os.path.join(os.path.dirname(__file__), "jobs_bot.db")
