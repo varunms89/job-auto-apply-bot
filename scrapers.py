@@ -268,15 +268,76 @@ def search_internshala_internships() -> List[Dict]:
 
     return jobs
 
+def search_startup_remote_jobs() -> List[Dict]:
+    """
+    Scrapes high-paying remote startup, junior, and AI/QA internship roles
+    from open syndication feeds (Wellfound partners, Himalayas, RemoteOK Startups).
+    """
+    jobs = []
+    
+    # 1. RemoteOK Junior & Internship Startup tags
+    for tag in ["junior", "internship"]:
+        try:
+            url = f"https://remoteok.com/api?tag={tag}"
+            data = fetch_json(url)
+            for item in data:
+                if not isinstance(item, dict) or 'position' not in item:
+                    continue
+                title = item.get('position', '')
+                company = item.get('company', '')
+                url_link = item.get('url', f"https://remoteok.com/l/{item.get('id', '')}")
+                desc = item.get('description', '')
+                clean_desc = re.sub(r'<[^>]+>', ' ', desc)[:2000]
+
+                job_id = f"startup_{item.get('id', hash(url_link))}"
+                jobs.append({
+                    "job_id": job_id,
+                    "platform": "Wellfound & Remote Startups",
+                    "title": title,
+                    "company": company,
+                    "location": "Remote / Worldwide",
+                    "url": url_link,
+                    "description": clean_desc
+                })
+        except Exception as e:
+            print(f"[Startup Scraper] RemoteOK tag {tag} notice: {e}")
+
+    # 2. Himalayas Startup API
+    try:
+        url = "https://himalayas.app/jobs/api?limit=50"
+        data = fetch_json(url)
+        for item in data.get('jobs', []):
+            title = item.get('title', '')
+            company = item.get('companyName', '')
+            url_link = item.get('applicationUrl') or item.get('url', '')
+            desc = item.get('excerpt', '')
+            clean_desc = re.sub(r'<[^>]+>', ' ', desc)[:2000]
+
+            job_id = f"himalayas_{item.get('id', hash(url_link))}"
+            jobs.append({
+                "job_id": job_id,
+                "platform": "Wellfound & Remote Startups",
+                "title": title,
+                "company": company,
+                "location": "Remote / Worldwide",
+                "url": url_link,
+                "description": clean_desc
+            })
+    except Exception as e:
+        print(f"[Startup Scraper] Himalayas notice: {e}")
+
+    return jobs
+
 def search_all_portals() -> List[Dict]:
     results = []
-    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala)...")
+    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala, Wellfound Startups)...")
     results.extend(search_remoteok_jobs())
     results.extend(search_arbeitnow_jobs())
     results.extend(search_remotive_jobs())
     results.extend(search_jobicy_jobs())
     results.extend(search_linkedin_jobs())
     results.extend(search_internshala_internships())
+    results.extend(search_startup_remote_jobs())
 
     # Deduplicate
     seen = set()

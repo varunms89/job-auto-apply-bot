@@ -93,6 +93,32 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(assessments).encode("utf-8"))
             return
 
+        if parsed_path.path == "/export/applications.csv":
+            import csv
+            import io
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, job_id, platform, title, company, location, match_score, status, applied_at, url 
+                FROM jobs ORDER BY id DESC;
+            """)
+            rows = cur.fetchall()
+            conn.close()
+
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["ID", "Job ID", "Platform", "Title", "Company", "Location", "Match Score", "Status", "Applied At", "URL"])
+            for r in rows:
+                writer.writerow(r)
+
+            csv_data = output.getvalue().encode('utf-8')
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="varunms_applications_backup.csv"')
+            self.end_headers()
+            self.wfile.write(csv_data)
+            return
+
         if parsed_path.path == "/resume":
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -193,6 +219,47 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     {ai_sections}
                 </div>
             </div>
+
+            <!-- LinkedIn Cold Outreach Message Modal -->
+            <div id="outreachModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
+                <div style="background:white; padding:25px 30px; border-radius:10px; max-width:580px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h3 id="modalTitle" style="margin:0; color:#0f172a; font-size:1.15rem;">✉️ LinkedIn Cold Outreach Message</h3>
+                        <span onclick="closeOutreach()" style="cursor:pointer; font-size:1.4rem; color:#64748b;">&times;</span>
+                    </div>
+                    <p style="color:#64748b; font-size:0.85rem; margin-top:0;">Send this message directly to recruiters, engineering leads, or founders on LinkedIn for this role:</p>
+                    <textarea id="outreachText" style="width:100%; height:200px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size:0.9rem; line-height:1.45; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#1e293b; resize:vertical;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                        <button onclick="copyOutreach()" id="copyBtn" style="background:#2563eb; color:white; border:none; padding:9px 18px; border-radius:6px; font-weight:600; cursor:pointer;">📋 Copy to Clipboard</button>
+                        <button onclick="closeOutreach()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function openOutreach(company, role) {
+                    var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
+                               "I came across the " + role + " opportunity at " + company + " and wanted to reach out directly. " +
+                               "As a final-year BCA student (Government Science College, Hassan - Graduating 2025) with practical projects in " +
+                               "Manual/API Testing, Python scripting, and AI workflows (see my GitHub: https://github.com/varunms89), " +
+                               "I would love the opportunity to contribute to your team as an intern or entry-level tester.\\n\\n" +
+                               "Would you be open to a quick 5-minute conversation or reviewing my portfolio?\\n\\n" +
+                               "Best regards,\\nVARUN M S\\n+91 8861639284 | msvarun89@gmail.com\\nLinkedIn: https://www.linkedin.com/in/varun-m-s-8861639284";
+                    document.getElementById('outreachText').value = text;
+                    document.getElementById('modalTitle').innerText = "✉️ Outreach for " + company;
+                    document.getElementById('copyBtn').innerText = "📋 Copy to Clipboard";
+                    document.getElementById('outreachModal').style.display = "flex";
+                }
+                function closeOutreach() {
+                    document.getElementById('outreachModal').style.display = "none";
+                }
+                function copyOutreach() {
+                    var copyText = document.getElementById("outreachText");
+                    copyText.select();
+                    document.execCommand("copy");
+                    document.getElementById('copyBtn').innerText = "✅ Copied to Clipboard!";
+                }
+            </script>
         </body>
         </html>
         """
@@ -360,13 +427,16 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
                 <!-- PART 1: SUBMITTED JOBS & INTERNSHIPS -->
                 <div class="card">
-                    <h2 class="tag-submitted">✅ Part 1: Submitted Jobs & Internships ({len(submitted_jobs)})</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+                        <h2 class="tag-submitted" style="margin:0; border-bottom:none;">✅ Part 1: Submitted Jobs & Internships ({len(submitted_jobs)})</h2>
+                        <a href="/export/applications.csv" style="background:#0f172a; color:white; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; text-decoration:none;">📥 Export Applications (CSV)</a>
+                    </div>
                     <table>
                         <thead>
-                            <tr><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Match Score</th><th>Status</th><th>Link</th></tr>
+                            <tr><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Match Score</th><th>Status</th><th>Link</th><th>Outreach</th></tr>
                         </thead>
                         <tbody>
-                            {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><b>{r[5]}/100</b></td><td><span class='badge-success'>{r[6]}</span></td><td><a href='{r[7]}' target='_blank'>View Job ↗</a></td></tr>" for idx, r in enumerate(submitted_jobs, 1)]) if submitted_jobs else "<tr><td colspan='7'>No jobs submitted yet.</td></tr>"}
+                            {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><b>{r[5]}/100</b></td><td><span class='badge-success'>{r[6]}</span></td><td><a href='{r[7]}' target='_blank'>View Job ↗</a></td><td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach(\\\"{r[2].replace(chr(34), \"\").replace(chr(39), \"\")}\\\", \\\"{r[1].replace(chr(34), \"\").replace(chr(39), \"\")}\\\")'>✉️ Outreach</button></td></tr>" for idx, r in enumerate(submitted_jobs, 1)]) if submitted_jobs else "<tr><td colspan='8'>No jobs submitted yet.</td></tr>"}
                         </tbody>
                     </table>
                 </div>
@@ -385,6 +455,47 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     </table>
                 </div>
             </div>
+
+            <!-- LinkedIn Cold Outreach Message Modal -->
+            <div id="outreachModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
+                <div style="background:white; padding:25px 30px; border-radius:10px; max-width:580px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h3 id="modalTitle" style="margin:0; color:#0f172a; font-size:1.15rem;">✉️ LinkedIn Cold Outreach Message</h3>
+                        <span onclick="closeOutreach()" style="cursor:pointer; font-size:1.4rem; color:#64748b;">&times;</span>
+                    </div>
+                    <p style="color:#64748b; font-size:0.85rem; margin-top:0;">Send this message directly to recruiters, engineering leads, or founders on LinkedIn for this role:</p>
+                    <textarea id="outreachText" style="width:100%; height:200px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size:0.9rem; line-height:1.45; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#1e293b; resize:vertical;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                        <button onclick="copyOutreach()" id="copyBtn" style="background:#2563eb; color:white; border:none; padding:9px 18px; border-radius:6px; font-weight:600; cursor:pointer;">📋 Copy to Clipboard</button>
+                        <button onclick="closeOutreach()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function openOutreach(company, role) {
+                    var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
+                               "I came across the " + role + " opportunity at " + company + " and wanted to reach out directly. " +
+                               "As a final-year BCA student (Government Science College, Hassan - Graduating 2025) with practical projects in " +
+                               "Manual/API Testing, Python scripting, and AI workflows (see my GitHub: https://github.com/varunms89), " +
+                               "I would love the opportunity to contribute to your team as an intern or entry-level tester.\\n\\n" +
+                               "Would you be open to a quick 5-minute conversation or reviewing my portfolio?\\n\\n" +
+                               "Best regards,\\nVARUN M S\\n+91 8861639284 | msvarun89@gmail.com\\nLinkedIn: https://www.linkedin.com/in/varun-m-s-8861639284";
+                    document.getElementById('outreachText').value = text;
+                    document.getElementById('modalTitle').innerText = "✉️ Outreach for " + company;
+                    document.getElementById('copyBtn').innerText = "📋 Copy to Clipboard";
+                    document.getElementById('outreachModal').style.display = "flex";
+                }
+                function closeOutreach() {
+                    document.getElementById('outreachModal').style.display = "none";
+                }
+                function copyOutreach() {
+                    var copyText = document.getElementById("outreachText");
+                    copyText.select();
+                    document.execCommand("copy");
+                    document.getElementById('copyBtn').innerText = "✅ Copied to Clipboard!";
+                }
+            </script>
         </body>
         </html>
         """
