@@ -60,6 +60,18 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        # Create divided views in PostgreSQL
+        cursor.execute("""
+            CREATE OR REPLACE VIEW submitted_jobs AS
+            SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, applied_at, created_at
+            FROM jobs
+            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+
+            CREATE OR REPLACE VIEW not_submitted_jobs AS
+            SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, created_at
+            FROM jobs
+            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+        """)
     else:
         # SQLite schema
         cursor.execute("""
@@ -91,6 +103,19 @@ def init_db():
                 status TEXT DEFAULT 'NEW',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        """)
+        # Create divided views in SQLite
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS submitted_jobs AS
+            SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, applied_at, created_at
+            FROM jobs
+            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+        """)
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS not_submitted_jobs AS
+            SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, created_at
+            FROM jobs
+            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
         """)
     conn.commit()
     conn.close()
