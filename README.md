@@ -1,8 +1,14 @@
 # E-Commerce Web & API Comprehensive Test Suite
 
-**Author:** VARUN M S  
-**Role:** QA / Software Tester  
-**Repository:** [github.com/varunms89/qa-ecommerce-test-suite](https://github.com/varunms89)
+[![Playwright E2E Tests](https://github.com/varunms89/qa-ecommerce-test-suite/actions/workflows/run-tests.yml/badge.svg)](https://github.com/varunms89/qa-ecommerce-test-suite/actions)
+![Playwright](https://img.shields.io/badge/Playwright-E2E%20Automated-2ea44f?logo=playwright&logoColor=white)
+![Postman](https://img.shields.io/badge/Postman-API%20Test%20Suite-FF6C37?logo=postman&logoColor=white)
+![Test Cases](https://img.shields.io/badge/Test%20Cases-50%2B%20Covered-blue)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+
+**Author:** VARUN M S (Final Year BCA 2025 | QA & Automation Engineer)  
+**Portfolio:** [varunms89.github.io](https://varunms89.github.io)  
+**Repository:** [github.com/varunms89/qa-ecommerce-test-suite](https://github.com/varunms89/qa-ecommerce-test-suite)  
 
 ---
 
