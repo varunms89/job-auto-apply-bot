@@ -528,6 +528,36 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Live Playwright Automation Terminal Simulator -->
+            <div style="margin-top: 20px; margin-bottom: 50px;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; box-shadow: 0 16px 36px rgba(0,0,0,0.5);">
+                    <!-- Terminal Header Bar -->
+                    <div style="background: #161b22; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; flex-wrap:wrap; gap:10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#ff5f56;"></span>
+                            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#ffbd2e;"></span>
+                            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#27c93f;"></span>
+                            <span style="color:#8b949e; font-family:'JetBrains Mono', monospace; font-size:0.82rem; margin-left:12px;">varun@sdet-runner: ~/qa-ecommerce-test-suite $ python tests/test_ecommerce_checkout.py</span>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="runTerminalTest()" id="runTestBtn" style="background: #238636; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                ▶ Run Live Playwright Test
+                            </button>
+                            <button onclick="resetTerminal()" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+                                ↺ Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Body -->
+                    <div id="terminalBody" style="padding: 20px 24px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9; min-height: 240px; max-height: 380px; overflow-y: auto;">
+                        <span style="color: #8b949e;"># Interactive E2E Playwright Automation Simulator</span><br>
+                        <span style="color: #8b949e;"># Click "▶ Run Live Playwright Test" to execute automated browser assertions in real-time...</span><br><br>
+                        <span style="color: #58a6ff;">varun@sdet-runner</span>:<span style="color: #7ee787;">~/qa-ecommerce-test-suite</span>$ <span id="cursorPrompt" style="display:inline-block; width:8px; height:14px; background:#58a6ff; vertical-align:middle;"></span>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- Technical Skills Section -->
@@ -639,5 +669,77 @@
         </div>
         <p>&copy; 2025 VARUN M S. Built for recruiters & engineering teams.</p>
     </footer>
+
+    <script>
+        const terminalSteps = [
+            { text: "pytest tests/test_ecommerce_checkout.py -v", color: "#58a6ff", delay: 180 },
+            { text: "============================= test session starts ==============================", color: "#8b949e", delay: 120 },
+            { text: "platform darwin -- Python 3.10.12, pytest-7.4.3, playwright-1.40.0", color: "#8b949e", delay: 120 },
+            { text: "> [INFO] Launching Chromium browser (headless: True, viewport: 1280x800)...", color: "#d29922", delay: 240 },
+            { text: "  -> Step 1: Navigating to https://www.saucedemo.com ...", color: "#c9d1d9", delay: 220 },
+            { text: "     ✓ Assertion PASSED: Page title verified 'Swag Labs' (HTTP 200 OK)", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 2: Entering valid credentials (standard_user) ...", color: "#c9d1d9", delay: 200 },
+            { text: "     ✓ Assertion PASSED: User authenticated & redirected to /inventory", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 3: Verifying inventory product catalog ...", color: "#c9d1d9", delay: 200 },
+            { text: "     ✓ Assertion PASSED: 6 items rendered, all prices > $0", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 4: Adding 'Sauce Labs Backpack' ($29.99) to cart ...", color: "#c9d1d9", delay: 220 },
+            { text: "     ✓ Assertion PASSED: Shopping cart badge count == 1", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 5: Opening cart & verifying item name ...", color: "#c9d1d9", delay: 200 },
+            { text: "     ✓ Assertion PASSED: Cart item matches 'Sauce Labs Backpack'", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 6: Checkout Form submission (First Name, Last Name, Postal Code) ...", color: "#c9d1d9", delay: 220 },
+            { text: "     ✓ Assertion PASSED: Field validations satisfied without errors", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 7: Validating total price calculation ...", color: "#c9d1d9", delay: 220 },
+            { text: "     ✓ Assertion PASSED: Subtotal ($29.99) + Tax ($2.40) == Total ($32.39)", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 8: Submitting order and verifying confirmation ...", color: "#c9d1d9", delay: 220 },
+            { text: "     ✓ Assertion PASSED: Header == 'Thank you for your order!'", color: "#7ee787", delay: 180 },
+            { text: "  -> Step 9: Capturing test evidence screenshot ...", color: "#c9d1d9", delay: 200 },
+            { text: "     📸 Saved artifact: 'checkout_verified.png'", color: "#bc8cff", delay: 200 },
+            { text: "======================= 8 passed, 0 failed in 1.28s ========================", color: "#7ee787", delay: 180 },
+            { text: "🎉 [SUCCESS] All 8 Playwright automation test assertions passed with 100% compliance!", color: "#3fb950", delay: 100 }
+        ];
+
+        let isRunning = false;
+        function runTerminalTest() {
+            if (isRunning) return;
+            isRunning = true;
+            const btn = document.getElementById('runTestBtn');
+            btn.innerHTML = "⏳ Running Tests...";
+            btn.style.background = "#6e7681";
+
+            const body = document.getElementById('terminalBody');
+            body.innerHTML = `<span style="color:#58a6ff;">varun@sdet-runner</span>:<span style="color:#7ee787;">~/qa-ecommerce-test-suite</span>$ <span style="color:#f0f6fc;">python tests/test_ecommerce_checkout.py</span><br><br>`;
+
+            let current = 0;
+            function printNext() {
+                if (current < terminalSteps.length) {
+                    const step = terminalSteps[current];
+                    body.innerHTML += `<div style="color:${step.color}; margin-bottom:2px;">${step.text}</div>`;
+                    body.scrollTop = body.scrollHeight;
+                    current++;
+                    setTimeout(printNext, step.delay);
+                } else {
+                    body.innerHTML += `<br><span style="color:#58a6ff;">varun@sdet-runner</span>:<span style="color:#7ee787;">~/qa-ecommerce-test-suite</span>$ <span style="display:inline-block; width:8px; height:14px; background:#58a6ff; vertical-align:middle;"></span>`;
+                    body.scrollTop = body.scrollHeight;
+                    btn.innerHTML = "✓ Test Completed";
+                    btn.style.background = "#238636";
+                    isRunning = false;
+                }
+            }
+            printNext();
+        }
+
+        function resetTerminal() {
+            if (isRunning) return;
+            const body = document.getElementById('terminalBody');
+            body.innerHTML = `
+                <span style="color: #8b949e;"># Interactive E2E Playwright Automation Simulator</span><br>
+                <span style="color: #8b949e;"># Click "▶ Run Live Playwright Test" to execute automated browser assertions in real-time...</span><br><br>
+                <span style="color: #58a6ff;">varun@sdet-runner</span>:<span style="color: #7ee787;">~/qa-ecommerce-test-suite</span>$ <span id="cursorPrompt" style="display:inline-block; width:8px; height:14px; background:#58a6ff; vertical-align:middle;"></span>
+            `;
+            const btn = document.getElementById('runTestBtn');
+            btn.innerHTML = "▶ Run Live Playwright Test";
+            btn.style.background = "#238636";
+        }
+    </script>
 </body>
 </html>
