@@ -146,5 +146,15 @@ class TestJobBot(unittest.TestCase):
         self.assertIn("TC_PAY_", upi_cases[0]["id"])
         print("\n[Test AI Test Case Generator] Verified rule-based IEEE test case authoring for QA.")
 
+    def test_mock_api_postman_collection(self):
+        import json
+        collection_path = "projects/qa-ecommerce-test-suite/Varun_MS_Ecommerce_API_Tests.postman_collection.json"
+        with open(collection_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual(data["info"]["name"], "Varun M S - E-Commerce API Test Suite")
+        base_url_var = next(v for v in data["variable"] if v["key"] == "base_url")
+        self.assertEqual(base_url_var["value"], "https://job-auto-apply-bot.onrender.com")
+        print("\n[Test Postman Mock API] Verified Postman collection is configured for 24/7 cloud testing.")
+
 if __name__ == "__main__":
     unittest.main()

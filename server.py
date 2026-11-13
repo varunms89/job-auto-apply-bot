@@ -12,10 +12,99 @@ from telegram_notifier import send_assessment_alert
 PORT = int(os.environ.get("PORT", 8080))
 
 class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
+    def _send_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self._send_cors_headers()
+        self.end_headers()
+
+    def do_DELETE(self):
+        parsed_path = urlparse(self.path)
+        if parsed_path.path.startswith("/api/v1/orders"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "status": "CANCELLED",
+                "message": "Order successfully cancelled in staging lifecycle test",
+                "code": 200
+            }).encode("utf-8"))
+            return
+        self.send_response(404)
+        self.end_headers()
+
     def do_POST(self):
         parsed_path = urlparse(self.path)
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else ""
+
+        # MOCK API FOR POSTMAN QA TEST SUITE
+        if parsed_path.path == "/api/v1/auth/login":
+            try:
+                if 'application/json' in self.headers.get('Content-Type', ''):
+                    body = json.loads(post_data) if post_data else {}
+                else:
+                    body = {k: v[0] for k, v in parse_qs(post_data).items()}
+                email = body.get("email", "")
+                password = body.get("password", "")
+                if password == "WrongPassword!" or ("Wrong" in password and password != "SecureTest123!"):
+                    self.send_response(401)
+                    self.send_header("Content-Type", "application/json")
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Invalid credentials: Email or password incorrect"}).encode("utf-8"))
+                    return
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self._send_cors_headers()
+                    self.end_headers()
+                    res = {
+                        "status": "success",
+                        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2YXJ1bm1zODkiLCJyb2xlIjoiUVVBTElUWV9BU1NVUkFOQ0UifQ.mock_valid_token_varun_ms_qa",
+                        "expires_in": 3600,
+                        "user": {
+                            "id": "usr_99",
+                            "email": email or "testuser@ecommerce.example.com",
+                            "name": "Varun M S (QA Tester)"
+                        }
+                    }
+                    self.wfile.write(json.dumps(res).encode("utf-8"))
+                    return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+
+        elif parsed_path.path == "/api/v1/orders":
+            try:
+                self.send_response(201)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                res = {
+                    "status": "CONFIRMED",
+                    "order_id": "ORD-2026-886163",
+                    "message": "Order successfully placed and verified by QA test suite",
+                    "created_at": "2026-11-13T20:10:00Z"
+                }
+                self.wfile.write(json.dumps(res).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
 
         if parsed_path.path == "/api/assessments":
             # API endpoint to ingest assessment from webhook or form
@@ -143,7 +232,47 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urlparse(self.path)
 
-        if parsed_path.path in ["/healthz", "/health"]:
+        # MOCK REST API FOR POSTMAN QA TEST SUITE
+        if parsed_path.path == "/api/v1/products":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            products_data = {
+                "status": "success",
+                "page": 1,
+                "limit": 10,
+                "total_count": 5,
+                "products": [
+                    {"id": 101, "name": "Wireless Noise Cancelling Headphones", "category": "Electronics", "price": 2999.00, "stock": 42},
+                    {"id": 102, "name": "Mechanical Gaming Keyboard RGB", "category": "Accessories", "price": 1499.50, "stock": 18},
+                    {"id": 103, "name": "Ergonomic Optical Mouse", "category": "Accessories", "price": 799.00, "stock": 85},
+                    {"id": 104, "name": "USB-C Fast Charging Hub (65W)", "category": "Electronics", "price": 1199.00, "stock": 60},
+                    {"id": 105, "name": "Water Resistant Laptop Backpack", "category": "Apparel", "price": 1899.00, "stock": 30}
+                ]
+            }
+            self.wfile.write(json.dumps(products_data).encode("utf-8"))
+            return
+
+        if parsed_path.path.startswith("/api/v1/products/"):
+            pid = parsed_path.path.split("/")[-1]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            product = {
+                "id": int(pid) if pid.isdigit() else 101,
+                "name": "Wireless Noise Cancelling Headphones",
+                "category": "Electronics",
+                "price": 2999.00,
+                "stock": 42,
+                "rating": 4.8,
+                "sku": "TECH-101-WNC"
+            }
+            self.wfile.write(json.dumps(product).encode("utf-8"))
+            return
+
+        if parsed_path in ["/healthz", "/health"] or parsed_path.path in ["/healthz", "/health"]:
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -609,6 +738,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <a href="/" class="active">📊 Dashboard</a>
                     <a href="/resume" target="_blank">📄 ATS Resume</a>
                     <a href="/prep">📚 Preparation Hub (QA / Python / AI)</a>
+                    <a href="javascript:void(0)" onclick="openLinkedInDrafter()" style="color:#38bdf8; font-weight:600;">📢 Share on LinkedIn</a>
                     <a href="/healthz">🩺 Health Check</a>
                 </div>
             </nav>
@@ -682,7 +812,10 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
                         <h2 class="tag-submitted" style="margin:0; border-bottom:none;">✅ Part 1: Submitted Jobs & Internships ({len(submitted_jobs)})</h2>
-                        <a href="/export/applications.csv" style="background:#0f172a; color:white; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; text-decoration:none;">📥 Export Applications (CSV)</a>
+                        <div>
+                            <button onclick="openLinkedInDrafter()" style="background:#0a66c2; color:white; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">📢 Share on LinkedIn</button>
+                            <a href="/export/applications.csv" style="background:#0f172a; color:white; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; text-decoration:none; margin-left:8px;">📥 Export Applications (CSV)</a>
+                        </div>
                     </div>
 
                     <!-- Search & Filter Bar -->
@@ -791,7 +924,109 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 </div>
             </div>
 
+            <!-- LinkedIn Project Showcase & Hiring Announcement Modal -->
+            <div id="linkedInModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
+                <div style="background:white; padding:25px 30px; border-radius:10px; max-width:640px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div>
+                            <h3 style="margin:0; color:#0f172a; font-size:1.15rem;">📢 1-Click LinkedIn Post Drafter</h3>
+                            <span style="color:#64748b; font-size:0.82rem;">Showcase your testing suites & projects to attract inbound recruiter inquiries</span>
+                        </div>
+                        <span onclick="closeLinkedInDrafter()" style="cursor:pointer; font-size:1.4rem; color:#64748b;">&times;</span>
+                    </div>
+
+                    <!-- Template Selector Tabs -->
+                    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+                        <button id="btnTpl1" onclick="selectLinkedInTemplate(1)" style="background:#0a66c2; color:white; border:none; padding:7px 12px; border-radius:6px; font-size:0.82rem; font-weight:600; cursor:pointer;">🧪 E-Commerce QA & CI/CD</button>
+                        <button id="btnTpl2" onclick="selectLinkedInTemplate(2)" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:7px 12px; border-radius:6px; font-size:0.82rem; font-weight:600; cursor:pointer;">🤖 FastAPI AI Resume Screener</button>
+                        <button id="btnTpl3" onclick="selectLinkedInTemplate(3)" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:7px 12px; border-radius:6px; font-size:0.82rem; font-weight:600; cursor:pointer;">🎓 Ready to Join as Fresher (BCA '25)</button>
+                    </div>
+
+                    <textarea id="linkedInPostText" style="width:100%; height:250px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size:0.88rem; line-height:1.45; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#1e293b; resize:vertical;"></textarea>
+                    
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                        <a id="linkedInDirectLink" href="#" target="_blank" style="background:#0a66c2; color:white; padding:9px 16px; border-radius:6px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; font-size:0.9rem; gap:6px;">🚀 Open & Post on LinkedIn</a>
+                        <button onclick="copyLinkedInPost()" id="copyLinkedInBtn" style="background:#2563eb; color:white; border:none; padding:9px 18px; border-radius:6px; font-weight:600; cursor:pointer;">📋 Copy to Clipboard</button>
+                        <button onclick="closeLinkedInDrafter()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <script>
+                var linkedInTemplates = {{
+                    1: "🚀 Excited to share my latest Quality Assurance project: Automated E-Commerce Test Suite with CI/CD & Postman API Verification!\\n\\n" +
+                       "As a final-year BCA student (Government Science College, Hassan - Graduating May 2025) specializing in Quality Assurance & Test Automation, I built this comprehensive testing framework simulating real-world e-commerce reliability:\\n\\n" +
+                       "Key Deliverables:\\n" +
+                       "✅ 50+ IEEE-standard manual test cases (Functional, Boundary Value Analysis, Negative Edge Cases for Cart, Checkout, Coupon & Authentication workflows).\\n" +
+                       "✅ Automated End-to-End Browser Testing using Python & Playwright with verified cart assertions and execution reports.\\n" +
+                       "✅ Automated GitHub Actions CI/CD pipeline executing tests on every commit with green verification badges.\\n" +
+                       "✅ Production-ready Postman REST API Test Collection with response status assertions, latency SLAs (<500ms), and JSON schema validation tested against a live staging mock server.\\n\\n" +
+                       "🔗 Live Portfolio & Interactive Test Runner: https://varunms89.github.io\\n" +
+                       "📦 GitHub Repository: https://github.com/varunms89/qa-ecommerce-test-suite\\n" +
+                       "📄 ATS Resume: https://varunms89.github.io/resume.html\\n\\n" +
+                       "I am available for immediate joining for full-time or internship QA Engineer / Software Tester roles (Remote or Bangalore).\\n\\n" +
+                       "#SoftwareTesting #QualityAssurance #QA #Playwright #Python #APITesting #Postman #CICD #SoftwareTester #Hiring #OpenToWork",
+
+                    2: "🤖 Excited to unveil my project: AI Resume Screener & Job Match Intelligence Platform!\\n\\n" +
+                       "Recruiters spend an average of 7 seconds scanning resumes, and Applicant Tracking Systems (ATS) often filter out qualified talent due to keyword mismatches. I developed this platform to bridge that gap with automated semantic intelligence.\\n\\n" +
+                       "What it does:\\n" +
+                       "⚡ Semantic ATS Keyword Matching using Google Gemini AI & Python.\\n" +
+                       "📊 Weighted Algorithmic ATS Match Scoring (0–100%) comparing candidate resumes against technical Job Descriptions.\\n" +
+                       "🚀 Production-grade FastAPI REST Microservice with interactive Swagger OpenAPI documentation (/docs).\\n" +
+                       "💡 Actionable feedback identifying missing industry skills and resume bullet recommendations.\\n\\n" +
+                       "💻 Live Portfolio: https://varunms89.github.io\\n" +
+                       "📦 GitHub Repository: https://github.com/varunms89/ai-resume-screener\\n" +
+                       "📄 Resume: https://varunms89.github.io/resume.html\\n\\n" +
+                       "Seeking entry-level opportunities in Python Development, QA Automation, or AI Engineering (Remote / Bangalore). Let's connect!\\n\\n" +
+                       "#Python #FastAPI #ArtificialIntelligence #GeminiAI #MachineLearning #ATS #Swagger #OpenAPI #Developer #Hiring",
+
+                    3: "👋 Hello Connections and Hiring Managers!\\n\\n" +
+                       "I am VARUN M S, a final-year Bachelor of Computer Applications (BCA) student at Government Science College, Hassan (Graduating May 2025), and I am actively seeking an entry-level role or internship as a Software Tester / QA Engineer or Python Developer.\\n\\n" +
+                       "Why hire me?\\n" +
+                       "🔹 Practical QA Discipline: Authored 50+ manual test cases, boundary value analysis, defect lifecycle tracking, and Postman API test assertions.\\n" +
+                       "🔹 Test Automation: Built Python & Playwright end-to-end browser tests integrated with GitHub Actions CI/CD.\\n" +
+                       "🔹 Backend & AI Skills: Developed FastAPI microservices with Swagger documentation and AI semantic parsing tools.\\n" +
+                       "🔹 Immediate Availability: Ready to join immediately for full-time or part-time internship (100% Remote or Bangalore hybrid) with seamless transition to full-time upon graduation in May 2025.\\n\\n" +
+                       "🌐 Interactive Portfolio: https://varunms89.github.io\\n" +
+                       "💼 GitHub: https://github.com/varunms89\\n" +
+                       "📧 msvarun89@gmail.com | 📱 +91 8861639284\\n\\n" +
+                       "If your team is looking for a dedicated tester who loves breaking code and ensuring zero-defect releases, I would love to connect!\\n\\n" +
+                       "#OpenToWork #Hiring #SoftwareTesting #QAEngineer #SoftwareTester #Python #BCA2025 #BangaloreJobs #RemoteJobs #FresherJobs"
+                }};
+
+                function openLinkedInDrafter() {{
+                    selectLinkedInTemplate(1);
+                    document.getElementById('linkedInModal').style.display = 'flex';
+                }}
+
+                function closeLinkedInDrafter() {{
+                    document.getElementById('linkedInModal').style.display = 'none';
+                }}
+
+                function selectLinkedInTemplate(tplId) {{
+                    for (var i = 1; i <= 3; i++) {{
+                        var btn = document.getElementById('btnTpl' + i);
+                        if (i === tplId) {{
+                            btn.style.background = '#0a66c2';
+                            btn.style.color = 'white';
+                        }} else {{
+                            btn.style.background = '#f1f5f9';
+                            btn.style.color = '#475569';
+                        }}
+                    }}
+                    var text = linkedInTemplates[tplId];
+                    document.getElementById('linkedInPostText').value = text;
+                    document.getElementById('copyLinkedInBtn').innerText = '📋 Copy to Clipboard';
+                    var shareUrl = 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(text);
+                    document.getElementById('linkedInDirectLink').href = shareUrl;
+                }}
+
+                function copyLinkedInPost() {{
+                    var copyText = document.getElementById('linkedInPostText');
+                    copyText.select();
+                    document.execCommand('copy');
+                    document.getElementById('copyLinkedInBtn').innerText = '✅ Copied to Clipboard!';
+                }}
                 function openOutreach(company, role) {{
                     var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
                                "I came across the " + role + " opportunity at " + company + " and wanted to reach out directly. " +
