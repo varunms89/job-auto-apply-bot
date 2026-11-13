@@ -504,9 +504,11 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
         active_interviews = len([r for r in submitted_jobs if r[6] in ('INTERVIEWING', 'OFFERED')])
 
         # Build Pending Tests Table Rows
+        from telegram_notifier import make_google_calendar_url
         test_rows = []
         for a in pending_tests:
-            test_rows.append(f"<tr><td><b>{a['company']}</b></td><td>{a['role_title']}</td><td><span class='badge-platform'>{a['platform']}</span></td><td><b>{a['deadline_or_time']}</b></td><td><code>{a['prep_topic']}</code></td><td><a href='{a['test_url']}' target='_blank' class='btn-take'>Start Test / Join ↗</a></td><td><form method='POST' action='/api/assessments/complete' style='display:inline;'><input type='hidden' name='id' value='{a['id']}'><button type='submit' class='btn-complete'>Mark Done ✓</button></form></td></tr>")
+            cal_link = make_google_calendar_url(a['company'], a['role_title'], a['platform'], a['test_url'], a['deadline_or_time'])
+            test_rows.append(f"<tr><td><b>{a['company']}</b></td><td>{a['role_title']}</td><td><span class='badge-platform'>{a['platform']}</span></td><td><b>{a['deadline_or_time']}</b></td><td><code>{a['prep_topic']}</code></td><td><a href='{a['test_url']}' target='_blank' class='btn-take'>Start Test / Join ↗</a> <a href='{cal_link}' target='_blank' style='background:#0f172a; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.82rem; font-weight:600; display:inline-block; margin-left:4px;' title='Add deadline to Google Calendar'>📅 Calendar</a></td><td><form method='POST' action='/api/assessments/complete' style='display:inline;'><input type='hidden' name='id' value='{a['id']}'><button type='submit' class='btn-complete'>Mark Done ✓</button></form></td></tr>")
         tests_rows_html = "".join(test_rows) if test_rows else "<tr><td colspan='7' style='text-align:center; color:#64748b; padding:15px;'>No pending test invites right now. Auto-detected email invites or manual additions will appear here instantly!</td></tr>"
 
         # Build Submitted Jobs Table Rows

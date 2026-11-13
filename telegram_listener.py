@@ -144,14 +144,17 @@ def handle_command(text: str, chat_id: str):
         if not pending:
             msg = "✅ <b>No pending assessments or tests right now!</b>\nWhen an employer sends an assessment link, it will appear here immediately."
         else:
+            from telegram_notifier import make_google_calendar_url
             msg = f"🚨 <b>PENDING TESTS & SESSIONS ({len(pending)}):</b>\n━━━━━━━━━━━━━━━━━━━\n"
             for idx, a in enumerate(pending, 1):
+                cal_url = make_google_calendar_url(a['company'], a['role_title'], a['platform'], a['test_url'], a['deadline_or_time'])
                 msg += (
                     f"\n<b>{idx}. {a['company']}</b> ({a['platform']})\n"
                     f"💼 Role: {a['role_title']}\n"
                     f"⏳ Deadline: <code>{a['deadline_or_time']}</code>\n"
                     f"📚 Topic: <code>{a['prep_topic']}</code>\n"
                     f"🔗 <a href='{a['test_url']}'>👉 Click to Take Test</a>\n"
+                    f"📅 <a href='{cal_url}'>🗓️ Add to Google Calendar</a>\n"
                 )
         send_telegram_message(msg, chat_id=chat_id)
 

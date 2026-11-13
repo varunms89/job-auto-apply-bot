@@ -113,11 +113,22 @@ def generate_live_report() -> str:
     )
     return report
 
+def make_google_calendar_url(company: str, role: str, platform: str, test_url: str, deadline: str) -> str:
+    title = f"Assessment / Interview: {company} ({role})"
+    details = f"Platform: {platform}\nDeadline/Time: {deadline}\nTest URL: {test_url}\nCandidate: Varun M S"
+    params = {
+        "action": "TEMPLATE",
+        "text": title,
+        "details": details
+    }
+    return f"https://calendar.google.com/calendar/render?{urllib.parse.urlencode(params)}"
+
 def send_assessment_alert(company: str, role_title: str, platform: str, test_url: str,
                           deadline_or_time: str, prep_topic: str = "General", instructions: str = "") -> bool:
     """
     Sends an urgent high-priority Telegram alert when a test link or online interview invite is detected.
     """
+    cal_url = make_google_calendar_url(company, role_title, platform, test_url, deadline_or_time)
     alert = (
         f"🚨 <b>TEST / ONLINE INTERVIEW ALERT!</b> 🚨\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
@@ -133,6 +144,7 @@ def send_assessment_alert(company: str, role_title: str, platform: str, test_url
 
     alert += (
         f"\n🚀 <a href='{test_url}'><b>👉 TAP TO START ASSESSMENT / JOIN ↗</b></a>\n"
+        f"📅 <a href='{cal_url}'><b>🗓️ ADD TO GOOGLE CALENDAR (1-TAP REMINDER) ↗</b></a>\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"💡 <i>Tip: Check the Preparation Hub on your Dashboard for QA & Python cheat sheets before starting!</i>"
     )
