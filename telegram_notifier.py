@@ -13,9 +13,19 @@ from config import USER_CONFIG
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8967390841:AAG-H6uDlZFu5ZPG0GD0cz2c0O4HfpDVwws")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "6482856507")
 
-def send_telegram_message(text: str, token: str = None, chat_id: str = None) -> bool:
+DEFAULT_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📊 Application Status"}, {"text": "🚨 Upcoming Tests"}],
+        [{"text": "💼 HR Screening Script"}, {"text": "📝 QA Practice Quiz"}],
+        [{"text": "📄 Live ATS Resume"}, {"text": "🌅 Morning Briefing"}]
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True
+}
+
+def send_telegram_message(text: str, token: str = None, chat_id: str = None, reply_markup=None) -> bool:
     """
-    Sends a formatted message to a Telegram chat or channel.
+    Sends a formatted message to a Telegram chat or channel with optional persistent quick reply keyboard.
     """
     bot_token = token or TELEGRAM_BOT_TOKEN
     target_chat = chat_id or TELEGRAM_CHAT_ID
@@ -32,6 +42,13 @@ def send_telegram_message(text: str, token: str = None, chat_id: str = None) -> 
         "parse_mode": "HTML",
         "disable_web_page_preview": False
     }
+
+    if reply_markup is True or reply_markup is None:
+        payload["reply_markup"] = json.dumps(DEFAULT_REPLY_KEYBOARD)
+    elif reply_markup is False:
+        pass
+    else:
+        payload["reply_markup"] = json.dumps(reply_markup)
 
     try:
         data = urllib.parse.urlencode(payload).encode("utf-8")

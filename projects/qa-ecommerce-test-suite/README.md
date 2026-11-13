@@ -18,12 +18,40 @@ This repository contains an industry-standard Quality Assurance (QA) test docume
 
 ## 📂 Repository Structure
 ```
-├── README.md                          # Project documentation and summary
-├── TEST_PLAN.md                       # Comprehensive IEEE 829 Test Plan
-├── TEST_CASES.md                      # Detailed test cases (Auth, Catalog, Cart, Checkout, Payment)
-├── BUG_REPORTS.md                     # Defect reports with severity/priority classification
-└── api_test_postman_collection.json   # Importable Postman REST API test collection
+├── README.md                                          # Project documentation and summary
+├── TEST_PLAN.md                                       # Comprehensive IEEE 829 Test Plan
+├── TEST_CASES.md                                      # Detailed test cases (Auth, Catalog, Cart, Checkout, Payment)
+├── BUG_REPORTS.md                                     # Defect reports with severity/priority classification
+└── Varun_MS_Ecommerce_API_Tests.postman_collection.json # Ready-to-import Postman REST API test collection
 ```
+
+---
+
+## 📮 Postman Automated API Test Collection
+
+This suite includes an exportable, industry-standard Postman Collection format (v2.1.0) inside:
+👉 `Varun_MS_Ecommerce_API_Tests.postman_collection.json`
+
+### Automated Checks & Test Scripts Included:
+1. **Authentication Tests (`POST /api/v1/auth/login`)**:
+   - Status 200 OK verification.
+   - Response latency SLA assertion (`< 500ms`).
+   - JWT Auth Token extraction & automatic environment variable storage.
+   - Negative boundary test: Invalid credentials return `401 Unauthorized` and descriptive error message.
+2. **Product Catalog Validation (`GET /api/v1/products`)**:
+   - Status 200 OK check and fast latency benchmark (`< 400ms`).
+   - JSON array integrity and non-zero pagination count.
+   - Price validation (`price > 0`).
+3. **Order Placement & Cancellation Workflow (`POST & DELETE /api/v1/orders`)**:
+   - Status `201 Created` assertion.
+   - `order_id` generation verification.
+   - Bearer token authorization header validation.
+   - Clean order deletion / cancellation validation (`200 OK` / `204 No Content`).
+
+### How to Run in Postman:
+1. Open Postman -> Click **Import** (top left).
+2. Drag and drop `Varun_MS_Ecommerce_API_Tests.postman_collection.json`.
+3. Click **Run Collection** to execute all automated test assertions!
 
 ---
 

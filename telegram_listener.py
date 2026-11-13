@@ -16,8 +16,11 @@ def handle_command(text: str, chat_id: str):
         msg = (
             "🤖 <b>JOB & ASSESSMENT BOT COMMANDS</b>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
+            "• Tap any button below or type a command:\n"
             "• <b>/status</b> - Current system stats & application counts\n"
             "• <b>/tests</b> - Show pending online tests & interview links\n"
+            "• <b>/hr</b> - HR phone screening scripts & model answers\n"
+            "• <b>/quiz</b> - Practice QA screening questions\n"
             "• <b>/prep qa</b> - Software Testing & QA master review\n"
             "• <b>/prep python</b> - Solved coding assessment problems\n"
             "• <b>/prep ai</b> - AI & Machine Learning key topics\n"
@@ -28,7 +31,7 @@ def handle_command(text: str, chat_id: str):
         )
         send_telegram_message(msg, chat_id=chat_id)
 
-    elif cmd.startswith("/status"):
+    elif cmd.startswith("/status") or "status" in cmd or "📊" in text:
         stats = get_job_stats()
         submitted = stats.get("SUBMITTED", 0) + stats.get("APPLIED", 0) + stats.get("APPLIED_READY", 0)
         total = sum(stats.values())
@@ -49,7 +52,7 @@ def handle_command(text: str, chat_id: str):
         )
         send_telegram_message(msg, chat_id=chat_id)
 
-    elif cmd.startswith("/tests"):
+    elif cmd.startswith("/tests") or "test" in cmd or "🚨" in text:
         assessments = get_assessments()
         pending = [a for a in assessments if a.get("status") == "PENDING"]
         if not pending:
@@ -64,6 +67,38 @@ def handle_command(text: str, chat_id: str):
                     f"📚 Topic: <code>{a['prep_topic']}</code>\n"
                     f"🔗 <a href='{a['test_url']}'>👉 Click to Take Test</a>\n"
                 )
+        send_telegram_message(msg, chat_id=chat_id)
+
+    elif cmd.startswith("/hr") or "screening" in cmd or "script" in cmd or "💼" in text:
+        from prep_assistant import HR_SCREENING_QUESTIONS
+        msg = (
+            "💼 <b>TOP HR SCREENING TALKING POINTS</b>\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+        )
+        for h in HR_SCREENING_QUESTIONS[:3]:
+            msg += (
+                f"<b>{h['question']}</b>\n"
+                f"🗣️ <i>\"{h['script']}\"</i>\n\n"
+            )
+        msg += "📖 <a href='https://job-auto-apply-bot.onrender.com/prep'>Open Full 5 Questions on Web Hub ↗</a>"
+        send_telegram_message(msg, chat_id=chat_id)
+
+    elif cmd.startswith("/quiz") or "quiz" in cmd or "📝" in text:
+        msg = (
+            "📝 <b>QA SCREENING PRACTICE QUESTIONS</b>\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "<b>Q1: In Boundary Value Analysis for age 18-60, which boundary set is optimal?</b>\n"
+            "A) 10, 20, 50, 70\n"
+            "B) 17, 18, 19, 59, 60, 61\n"
+            "C) 0, 18, 60, 100\n"
+            "👉 <i>Correct: B (Min-1, Min, Min+1, Max-1, Max, Max+1)</i>\n\n"
+            "<b>Q2: Which HTTP status code indicates a new resource was created?</b>\n"
+            "A) 200 OK\n"
+            "B) 201 Created\n"
+            "C) 204 No Content\n"
+            "👉 <i>Correct: B (201 Created)</i>\n\n"
+            "🎯 <a href='https://job-auto-apply-bot.onrender.com/prep'>Take the 10-Question Interactive Quiz with Live Scoring ↗</a>"
+        )
         send_telegram_message(msg, chat_id=chat_id)
 
     elif cmd.startswith("/prep qa"):
@@ -124,11 +159,11 @@ def handle_command(text: str, chat_id: str):
         )
         send_telegram_message(msg, chat_id=chat_id)
 
-    elif cmd.startswith("/morning"):
+    elif cmd.startswith("/morning") or "morning" in cmd or "🌅" in text:
         from telegram_notifier import send_morning_briefing
         send_morning_briefing()
 
-    elif cmd.startswith("/resume"):
+    elif cmd.startswith("/resume") or "resume" in cmd or "📄" in text:
         msg = (
             "📄 <b>YOUR LIVE ATS RESUME</b>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
