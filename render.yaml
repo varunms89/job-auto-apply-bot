@@ -1,9 +1,11 @@
 services:
-  - type: worker
+  - type: web
     name: job-auto-apply-bot
     env: python
+    plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python live_bot.py"
+    startCommand: "python server.py"
+    healthCheckPath: /healthz
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
@@ -12,4 +14,6 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: DATABASE_URL
         sync: false
