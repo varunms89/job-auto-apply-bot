@@ -18,14 +18,36 @@ class TestJobBot(unittest.TestCase):
 
     def test_onsite_rejection(self):
         title = "Junior Software QA Tester"
-        desc = "Strictly on-site position at office."
+        desc = "Strictly on-site position in Berlin."
         company = "OfficeCorp"
-        location = "Mumbai Office Only"
+        location = "Berlin, Germany"
 
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertEqual(score, 0.0)
-        self.assertIn("does not offer Work From Home", reasons)
+        self.assertIn("neither Remote/WFH nor Bangalore/Karnataka/India", reasons)
         print(f"[Test Match On-Site Rejection] Score: {score} | Filtered: {reasons}")
+
+    def test_bangalore_qa_matching(self):
+        title = "QA Intern - Manual Testing"
+        desc = "Looking for freshers / BCA graduates for manual test cases and defect tracking in Bangalore."
+        company = "Bengaluru Tech Labs"
+        location = "Bangalore, India"
+
+        score, reasons = evaluate_job_match(title, desc, company, location)
+        self.assertGreaterEqual(score, 50.0)
+        self.assertIn("Bangalore / Karnataka / India", reasons)
+        print(f"[Test Match Bangalore QA] Score: {score} | Reasons: {reasons}")
+
+    def test_allied_support_matching(self):
+        title = "Technical Support Engineer Trainee"
+        desc = "Entry-level technical support, troubleshooting, bug reporting. Remote or Bangalore."
+        company = "SupportDesk Co"
+        location = "Remote"
+
+        score, reasons = evaluate_job_match(title, desc, company, location)
+        self.assertGreaterEqual(score, 50.0)
+        self.assertIn("Allied Tech Support", reasons)
+        print(f"[Test Match Allied Support] Score: {score} | Reasons: {reasons}")
 
     def test_auto_apply_payload(self):
         engine = AutoApplyEngine(dry_run=True)
