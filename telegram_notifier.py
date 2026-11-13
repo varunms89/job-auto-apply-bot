@@ -16,8 +16,8 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "6482856507")
 DEFAULT_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "📊 Application Status"}, {"text": "🚨 Upcoming Tests"}],
-        [{"text": "💼 HR Screening Script"}, {"text": "📝 QA Practice Quiz"}],
-        [{"text": "📄 Live ATS Resume"}, {"text": "🌅 Morning Briefing"}]
+        [{"text": "🎯 Mock Interview"}, {"text": "💼 HR Screening Script"}],
+        [{"text": "📝 QA Practice Quiz"}, {"text": "📄 Live ATS Resume"}]
     ],
     "resize_keyboard": True,
     "is_persistent": True

@@ -421,7 +421,10 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                         </select>
                     </td>
                     <td><a href='{url}' target='_blank'>View Job ↗</a></td>
-                    <td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach("{comp_clean}", "{title_clean}")'>✉️ Outreach</button></td>
+                    <td>
+                        <button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach("{comp_clean}", "{title_clean}")'>✉️ Outreach</button>
+                        <button class='btn-take' style='background:#10b981; cursor:pointer; border:none; margin-left:4px;' onclick='openFollowUp("{comp_clean}", "{title_clean}")' title='Send a 3-sentence recruiter follow-up'>📬 Follow-Up</button>
+                    </td>
                 </tr>
             """)
         submitted_rows_html = "".join(submitted_rows) if submitted_rows else "<tr><td colspan='9'>No jobs submitted yet.</td></tr>"
@@ -624,6 +627,26 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 </div>
             </div>
 
+            <!-- Recruiter 7-Day Follow-Up Email Modal -->
+            <div id="followUpModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
+                <div style="background:white; padding:25px 30px; border-radius:10px; max-width:620px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h3 id="followUpTitle" style="margin:0; color:#0f172a; font-size:1.15rem;">📬 Recruiter Follow-Up Email</h3>
+                        <span onclick="closeFollowUp()" style="cursor:pointer; font-size:1.4rem; color:#64748b;">&times;</span>
+                    </div>
+                    <p style="color:#64748b; font-size:0.85rem; margin-top:0;">Send this follow-up email 5–7 days after applying to bump your application to the top of the recruiter's inbox:</p>
+                    <div style="margin-bottom:8px;">
+                        <b>Subject:</b> <input type="text" id="followUpSubject" readonly style="width:100%; padding:6px 10px; margin-top:4px; font-weight:600; font-size:0.88rem; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; color:#1e293b; box-sizing:border-box;">
+                    </div>
+                    <textarea id="followUpText" style="width:100%; height:200px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size:0.9rem; line-height:1.45; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#1e293b; resize:vertical;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                        <a id="gmailLink" href="#" target="_blank" style="background:#ea4335; color:white; padding:9px 16px; border-radius:6px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; font-size:0.9rem;">📧 Open in Gmail</a>
+                        <button onclick="copyFollowUp()" id="copyFollowUpBtn" style="background:#2563eb; color:white; border:none; padding:9px 18px; border-radius:6px; font-weight:600; cursor:pointer;">📋 Copy to Clipboard</button>
+                        <button onclick="closeFollowUp()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <script>
                 function openOutreach(company, role) {{
                     var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
@@ -646,6 +669,38 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     copyText.select();
                     document.execCommand("copy");
                     document.getElementById('copyBtn').innerText = "✅ Copied to Clipboard!";
+                }}
+
+                function openFollowUp(company, role) {{
+                    var subject = "Following Up: Application for " + role + " - Varun M S";
+                    var text = "Dear " + company + " Hiring Team,\\n\\n" +
+                               "I hope you are having a productive week.\\n\\n" +
+                               "I recently submitted my application for the " + role + " opportunity at " + company + ". " +
+                               "As a final-year Bachelor of Computer Applications (BCA) student (Government Science College, Hassan - Graduating May 2025) " +
+                               "with hands-on projects in manual/API testing, test case design, and Python scripting, " +
+                               "I wanted to follow up and reiterate my strong enthusiasm for joining your team.\\n\\n" +
+                               "You can review my practical testing artifacts and public repositories here:\\n" +
+                               "• Developer Portfolio: https://varunms89.github.io\\n" +
+                               "• E-Commerce QA & API Test Suite: https://github.com/varunms89/qa-ecommerce-test-suite\\n" +
+                               "• ATS Resume: https://varunms89.github.io/resume.html\\n\\n" +
+                               "Thank you for your time and consideration. I would welcome the opportunity for a brief 10-minute introductory conversation.\\n\\n" +
+                               "Best regards,\\nVARUN M S\\n+91 8861639284 | msvarun89@gmail.com\\nLinkedIn: https://www.linkedin.com/in/varun-m-s-8861639284";
+                    document.getElementById('followUpSubject').value = subject;
+                    document.getElementById('followUpText').value = text;
+                    document.getElementById('followUpTitle').innerText = "📬 Follow-Up for " + company;
+                    document.getElementById('copyFollowUpBtn').innerText = "📋 Copy to Clipboard";
+                    var mailtoUrl = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text);
+                    document.getElementById('gmailLink').href = mailtoUrl;
+                    document.getElementById('followUpModal').style.display = "flex";
+                }}
+                function closeFollowUp() {{
+                    document.getElementById('followUpModal').style.display = "none";
+                }}
+                function copyFollowUp() {{
+                    var copyText = document.getElementById("followUpText");
+                    copyText.select();
+                    document.execCommand("copy");
+                    document.getElementById('copyFollowUpBtn').innerText = "✅ Copied to Clipboard!";
                 }}
 
                 function changeJobStatus(jobId, newStatus) {{

@@ -9,14 +9,100 @@ from telegram_notifier import send_telegram_message
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8967390841:AAG-H6uDlZFu5ZPG0GD0cz2c0O4HfpDVwws")
 AUTHORIZED_CHAT_ID = str(os.environ.get("TELEGRAM_CHAT_ID", "6482856507"))
 
+INTERVIEW_QUESTIONS = [
+    {
+        "id": 1,
+        "question": "Q1 of 3: Can you walk me through the Bug Life Cycle from discovery to closure, and what would you do if a developer rejects your bug as 'Not a Bug'?",
+        "keywords": ["reproduce", "steps", "screenshot", "log", "requirement", "srs", "brd", "retest", "close", "reject", "lead", "ba", "priority", "severity"],
+        "model_answer": "Log the defect with complete steps to reproduce, expected vs actual result, severity/priority, and screenshots/logs. If rejected, first verify against requirements/SRS documentation. If still reproducible, demonstrate the exact steps to the developer or provide DevTools console/network logs. If disputed, consult the QA Lead or Product Owner.",
+        "tip": "Always mention verifying against SRS requirements and providing reproducible Chrome DevTools network logs."
+    },
+    {
+        "id": 2,
+        "question": "Q2 of 3: How would you design test cases for an e-commerce coupon code input (valid 10% to 50% discount) using Boundary Value Analysis and Equivalence Partitioning?",
+        "keywords": ["boundary", "equivalence", "valid", "invalid", "10", "50", "9", "11", "49", "51", "partition", "test case"],
+        "model_answer": "Equivalence Partitioning: Valid partition is [10, 50]. Invalid partitions are <10 (e.g. 5) and >50 (e.g. 60). Boundary Value Analysis tests: 9 (Min-1), 10 (Min), 11 (Min+1), 49 (Max-1), 50 (Max), 51 (Max+1). Also test null/empty input and special characters.",
+        "tip": "Explicitly recite the 6 exact BVA values: 9, 10, 11, 49, 50, and 51."
+    },
+    {
+        "id": 3,
+        "question": "Q3 of 3: What is the key difference between Smoke Testing and Regression Testing, and when in a sprint cycle do you run each?",
+        "keywords": ["smoke", "build", "shallow", "critical", "regression", "side effect", "deep", "fix", "commit", "release", "sprint"],
+        "model_answer": "Smoke Testing (Build Verification Testing) is shallow and fast; run immediately upon receiving a new build to check basic critical functionality before proceeding. Regression Testing is comprehensive and deep; run after bug fixes or code changes to ensure existing features were not broken.",
+        "tip": "Emphasize that smoke testing is a fast gatekeeper test, while regression ensures zero unintended side-effects."
+    }
+]
+
+interview_sessions = {}
+
 def handle_command(text: str, chat_id: str):
     cmd = text.strip().lower()
+
+    # Check if this message is part of an active mock interview
+    if chat_id in interview_sessions and not cmd.startswith("/") and text not in ["📊 Application Status", "🚨 Upcoming Tests", "💼 HR Screening Script", "📝 QA Practice Quiz", "📄 Live ATS Resume", "🌅 Morning Briefing"]:
+        sess = interview_sessions[chat_id]
+        step = sess["step"]
+        q = INTERVIEW_QUESTIONS[step]
+
+        # Score the answer based on keywords & length
+        matched = [k for k in q["keywords"] if k in text.lower()]
+        word_count = len(text.split())
+        if word_count < 5:
+            score = 4.0
+        else:
+            ratio = len(matched) / len(q["keywords"])
+            score = min(10.0, max(5.0, round(5.0 + ratio * 6.5, 1)))
+
+        sess["scores"].append(score)
+
+        feedback = (
+            f"🎯 <b>Evaluation for Q{step+1}:</b>\n"
+            f"⭐️ <b>Your Score:</b> <code>{score}/10</code>\n\n"
+            f"✅ <b>Model Answer:</b>\n<i>\"{q['model_answer']}\"</i>\n\n"
+            f"💡 <b>Pro Tip:</b> {q['tip']}\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+        )
+
+        if step < len(INTERVIEW_QUESTIONS) - 1:
+            sess["step"] += 1
+            next_q = INTERVIEW_QUESTIONS[sess["step"]]
+            feedback += f"\n<b>{next_q['question']}</b>\n\n<i>Type your response below:</i>"
+            send_telegram_message(feedback, chat_id=chat_id)
+            return
+        else:
+            total_score = sum(sess["scores"])
+            avg = round(total_score / len(sess["scores"]), 1)
+            verdict = "🎉 Outstanding! You are 100% ready for technical QA screening calls!" if avg >= 8.0 else "💡 Good job! Review the model answers above to sharpen your responses!"
+            feedback += (
+                f"\n🏁 <b>MOCK INTERVIEW COMPLETE!</b>\n"
+                f"📊 <b>Total Score:</b> <code>{round(total_score, 1)} / 30</code> (Average: <code>{avg}/10</code>)\n"
+                f"{verdict}\n\n"
+                f"Tap <b>🎯 Mock Interview</b> anytime to practice again!"
+            )
+            del interview_sessions[chat_id]
+            send_telegram_message(feedback, chat_id=chat_id)
+            return
+
+    # Normal Command Handlers
+    if cmd.startswith("/interview") or "mock interview" in cmd or "🎯" in text:
+        interview_sessions[chat_id] = {"step": 0, "scores": []}
+        q1 = INTERVIEW_QUESTIONS[0]
+        msg = (
+            "🎯 <b>INTERACTIVE TECHNICAL MOCK INTERVIEW STARTED</b>\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "<i>I will ask you 3 real-world interview questions asked by top tech recruiters. Type or voice-dictate your answer to each question:</i>\n\n"
+            f"<b>{q1['question']}</b>\n\n"
+            "<i>Type your answer below:</i>"
+        )
+        send_telegram_message(msg, chat_id=chat_id)
+        return
 
     if cmd.startswith("/start") or cmd.startswith("/help"):
         msg = (
             "🤖 <b>JOB & ASSESSMENT BOT COMMANDS</b>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
             "• Tap any button below or type a command:\n"
+            "• <b>/interview</b> - Start 3-question technical mock interview\n"
             "• <b>/status</b> - Current system stats & application counts\n"
             "• <b>/tests</b> - Show pending online tests & interview links\n"
             "• <b>/hr</b> - HR phone screening scripts & model answers\n"
