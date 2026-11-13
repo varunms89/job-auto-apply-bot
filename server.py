@@ -399,9 +399,17 @@ def run_web_service():
     bot_thread = threading.Thread(target=run_continuous_live_bot, daemon=True)
     bot_thread.start()
 
-    # 2. Start HTTP server (satisfies Render Web Service health check on free tier)
+    # 2. Start interactive Telegram command listener thread
+    try:
+        from telegram_listener import run_telegram_listener
+        tg_thread = threading.Thread(target=run_telegram_listener, daemon=True)
+        tg_thread.start()
+    except Exception as e:
+        print(f"⚠️ Could not start Telegram listener: {e}")
+
+    # 3. Start HTTP server (satisfies Render Web Service health check on free tier)
     server = HTTPServer(("0.0.0.0", PORT), HealthCheckAndDashboardHandler)
-    print(f"🌐 Web Server listening on port {PORT} with Assessment Tracker & Prep Hub...")
+    print(f"🌐 Web Server listening on port {PORT} with Assessment Tracker, Prep Hub & Telegram commands...")
     server.serve_forever()
 
 if __name__ == "__main__":

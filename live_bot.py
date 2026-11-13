@@ -16,6 +16,15 @@ def run_continuous_live_bot():
     print("💻 Target: Software Tester (100% Work From Home / Remote)")
     print("==================================================================")
 
+    # Start interactive Telegram command listener thread
+    try:
+        import threading
+        from telegram_listener import run_telegram_listener
+        tg_thread = threading.Thread(target=run_telegram_listener, daemon=True)
+        tg_thread.start()
+    except Exception as e:
+        print(f"⚠️ Note on Telegram listener: {e}")
+
     cycle_number = 1
     while True:
         try:
