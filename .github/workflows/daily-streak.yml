@@ -1,0 +1,38 @@
+name: Daily QA Learning & GitHub Streak
+
+on:
+  schedule:
+    # 04:30 UTC = 10:00 AM IST daily
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  daily-log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run Daily QA Logger
+        run: |
+          python scripts/log_daily_qa_note.py
+
+      - name: Commit and Push Daily Learning Note
+        run: |
+          git config user.name "VARUN M S"
+          git config user.email "varunms89@users.noreply.github.com"
+          git add DAILY_NOTES.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit today."
+          else
+            git commit -m "docs: Log daily QA engineering note [automated streak]"
+            git push origin main
+          fi
