@@ -542,6 +542,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <td>
                         <button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach("{comp_clean}", "{title_clean}")'>✉️ Outreach</button>
                         <button class='btn-take' style='background:#10b981; cursor:pointer; border:none; margin-left:4px;' onclick='openFollowUp("{comp_clean}", "{title_clean}")' title='Send a 3-sentence recruiter follow-up'>📬 Follow-Up</button>
+                        <button class='btn-take' style='background:#7c3aed; cursor:pointer; border:none; margin-left:4px;' onclick='openCoverLetter("{comp_clean}", "{title_clean}")' title='Generate Domain-Tailored Cover Letter'>📝 Cover Letter</button>
                     </td>
                 </tr>
             """)
@@ -765,6 +766,29 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 </div>
             </div>
 
+            <!-- Domain-Tailored Cover Letter Modal -->
+            <div id="coverLetterModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
+                <div style="background:white; padding:25px 30px; border-radius:10px; max-width:640px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div>
+                            <h3 id="coverLetterTitle" style="margin:0; color:#0f172a; font-size:1.15rem;">📝 Domain-Tailored Cover Letter</h3>
+                            <span id="domainBadge" style="background:#e0e7ff; color:#3730a3; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; margin-top:4px; display:inline-block;">Domain: General Tech / Software</span>
+                        </div>
+                        <span onclick="closeCoverLetter()" style="cursor:pointer; font-size:1.4rem; color:#64748b;">&times;</span>
+                    </div>
+                    <p style="color:#64748b; font-size:0.85rem; margin-top:0;">Customized 3-paragraph letter connecting your QA, Postman, and Playwright projects to this company's product domain:</p>
+                    <div style="margin-bottom:8px;">
+                        <b>Subject:</b> <input type="text" id="coverLetterSubject" readonly style="width:100%; padding:6px 10px; margin-top:4px; font-weight:600; font-size:0.88rem; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; color:#1e293b; box-sizing:border-box;">
+                    </div>
+                    <textarea id="coverLetterText" style="width:100%; height:240px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, sans-serif; font-size:0.88rem; line-height:1.45; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; color:#1e293b; resize:vertical;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                        <a id="gmailCoverLink" href="#" target="_blank" style="background:#ea4335; color:white; padding:9px 16px; border-radius:6px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; font-size:0.9rem;">📧 Open in Gmail</a>
+                        <button onclick="copyCoverLetter()" id="copyCoverBtn" style="background:#2563eb; color:white; border:none; padding:9px 18px; border-radius:6px; font-weight:600; cursor:pointer;">📋 Copy to Clipboard</button>
+                        <button onclick="closeCoverLetter()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:9px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <script>
                 function openOutreach(company, role) {{
                     var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
@@ -819,6 +843,59 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     copyText.select();
                     document.execCommand("copy");
                     document.getElementById('copyFollowUpBtn').innerText = "✅ Copied to Clipboard!";
+                }}
+
+                function openCoverLetter(company, role) {{
+                    var compLower = company.toLowerCase();
+                    var domain = "Enterprise Software & Cloud Platforms";
+                    var domainSpecificSentence = "Given " + company + "'s focus on scalable software engineering, robust automated testing and API resilience are vital for maintaining product quality.";
+
+                    if (compLower.includes("siemens") || compLower.includes("health") || compLower.includes("care") || compLower.includes("med")) {{
+                        domain = "Healthcare & Industrial Technology";
+                        domainSpecificSentence = "In mission-critical medical and industrial platforms like those developed at " + company + ", rigorous boundary value analysis and zero-defect QA standards are essential for patient and operational safety.";
+                    }} else if (compLower.includes("harman") || compLower.includes("samsung") || compLower.includes("auto") || compLower.includes("iot")) {{
+                        domain = "Automotive, Audio & Connected IoT";
+                        domainSpecificSentence = "In connected automotive and connected IoT ecosystems at " + company + ", latency benchmarking, network resilience testing, and seamless API communication are critical to user experience.";
+                    }} else if (compLower.includes("pay") || compLower.includes("bank") || compLower.includes("fin") || compLower.includes("money")) {{
+                        domain = "Fintech & Financial Transactions";
+                        domainSpecificSentence = "In high-throughput fintech and transactional environments at " + company + ", verifying edge cases, boundary thresholds, and idempotent API workflows prevents revenue loss and builds customer trust.";
+                    }} else if (compLower.includes("rakuten") || compLower.includes("ecom") || compLower.includes("cart") || compLower.includes("shop")) {{
+                        domain = "E-Commerce & Digital Commerce";
+                        domainSpecificSentence = "Having authored a full 50+ test case e-commerce suite with Playwright checkout automation, I deeply understand user journey testing from catalog search to checkout validation.";
+                    }}
+
+                    document.getElementById('domainBadge').innerText = "Domain: " + domain;
+                    var subject = "Application for " + role + " - Varun M S (BCA 2025 | QA & Python)";
+                    var text = "Dear " + company + " Hiring Team,\\n\\n" +
+                               "I am writing to express my strong interest in the " + role + " position at " + company + ". " +
+                               "As a final-year Bachelor of Computer Applications (BCA) student at Government Science College, Hassan, graduating in May 2025, " +
+                               "I have built a strong practical foundation in Software Quality Assurance (QA), manual test planning, Boundary Value Analysis, Postman API testing, and Python scripting. " +
+                               domainSpecificSentence + "\\n\\n" +
+                               "Throughout my academic and independent work, I have delivered hands-on quality assurance artifacts directly aligned with your team's sprint needs:\\n" +
+                               "• E-Commerce Manual & API QA Suite: Authored 50+ detailed functional/boundary test cases, IEEE 829 test plans, defect tracking reports, and an automated Postman REST API collection with latency SLA assertions (<500ms).\\n" +
+                               "• Python Playwright E2E Automation: Built browser automation validating end-to-end checkout workflows with CI/CD passing badges on GitHub Actions.\\n" +
+                               "• AI Resume Screener: Developed semantic text processing tools using Python, demonstrating my versatility across testing and data workflows.\\n\\n" +
+                               "I am available for immediate joining for full-time or part-time internship roles (both Remote/WFH or Bangalore hybrid) and will transition seamlessly to full-time employment upon graduation in May 2025. " +
+                               "You can explore my interactive portfolio and live test suites at https://varunms89.github.io.\\n\\n" +
+                               "Thank you for your time and consideration. I would welcome the opportunity to discuss how my testing discipline can contribute to " + company + "'s releases.\\n\\n" +
+                               "Sincerely,\\nVARUN M S\\n+91 8861639284 | msvarun89@gmail.com\\nPortfolio: https://varunms89.github.io\\nLinkedIn: https://www.linkedin.com/in/varun-m-s-8861639284";
+
+                    document.getElementById('coverLetterSubject').value = subject;
+                    document.getElementById('coverLetterText').value = text;
+                    document.getElementById('coverLetterTitle').innerText = "📝 Cover Letter for " + company;
+                    document.getElementById('copyCoverBtn').innerText = "📋 Copy to Clipboard";
+                    var mailtoUrl = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text);
+                    document.getElementById('gmailCoverLink').href = mailtoUrl;
+                    document.getElementById('coverLetterModal').style.display = "flex";
+                }}
+                function closeCoverLetter() {{
+                    document.getElementById('coverLetterModal').style.display = "none";
+                }}
+                function copyCoverLetter() {{
+                    var copyText = document.getElementById("coverLetterText");
+                    copyText.select();
+                    document.execCommand("copy");
+                    document.getElementById('copyCoverBtn').innerText = "✅ Copied to Clipboard!";
                 }}
 
                 function changeJobStatus(jobId, newStatus) {{
