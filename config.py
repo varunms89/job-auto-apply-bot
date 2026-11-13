@@ -11,6 +11,7 @@ class UserProfile:
     location: str = "Hassan, Karnataka, India"
     work_preference: str = "Remote / Work From Home & Bangalore / Karnataka Hybrid / On-site"
     github: str = "https://github.com/varunms89"
+    linkedin: str = "https://www.linkedin.com/in/varun-m-s-8861639284"
     degree: str = "Bachelor of Computer Applications (BCA) - Final Year"
     puc_12th: str = "12th Standard / Pre-University (Commerce)"
     graduation_year: str = "2025"

@@ -1,6 +1,7 @@
 import urllib.request
 import json
 import re
+import os
 import ssl
 from typing import List, Dict
 
@@ -137,13 +138,68 @@ def search_jobicy_jobs() -> List[Dict]:
         print(f"[Jobicy] Notice: {e}")
     return jobs
 
+def search_linkedin_jobs() -> List[Dict]:
+    """
+    Scrapes real-time Software Tester & QA jobs from LinkedIn for India & Remote.
+    """
+    jobs = []
+    queries = [
+        ("Software%20Tester", "Bengaluru"),
+        ("QA%20Engineer", "Bengaluru"),
+        ("Software%20Tester", "India"),
+        ("QA%20Intern", "India")
+    ]
+    
+    linkedin_cookie = os.environ.get("LINKEDIN_LI_AT", "")
+
+    for keyword, location in queries:
+        try:
+            url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keyword}&location={location}&f_TPR=r86400&start=0"
+            req_headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            }
+            if linkedin_cookie:
+                req_headers['Cookie'] = f"li_at={linkedin_cookie};"
+
+            req = urllib.request.Request(url, headers=req_headers)
+            with urllib.request.urlopen(req, context=SSL_CTX, timeout=12) as resp:
+                html = resp.read().decode('utf-8', errors='ignore')
+                
+                # Split by job card
+                cards = html.split('base-card')
+                for card in cards[1:]:
+                    title_m = re.search(r'<h3 class=\"base-search-card__title\">[\s\n]*([^<]+)[\s\n]*</h3>', card)
+                    link_m = re.search(r'href=\"(https://[a-z]+\.linkedin\.com/jobs/view/[^\"]+)\"', card)
+                    company_m = re.search(r'<h4 class=\"base-search-card__subtitle\">[\s\S]*?</h4>', card)
+                    
+                    if title_m and link_m:
+                        clean_title = title_m.group(1).strip()
+                        clean_url = link_m.group(1).split('?')[0]
+                        clean_company = re.sub(r'<[^>]+>', '', company_m.group(0)).strip() if company_m else "LinkedIn Company"
+                        job_id = f"li_{re.sub(r'[^0-9]', '', clean_url)[-12:] or abs(hash(clean_url))}"
+
+                        jobs.append({
+                            "job_id": job_id,
+                            "platform": "LinkedIn",
+                            "title": clean_title,
+                            "company": clean_company,
+                            "location": location,
+                            "url": clean_url,
+                            "description": f"LinkedIn Job: {clean_title} at {clean_company} in {location}. Direct link: {clean_url}"
+                        })
+        except Exception as e:
+            print(f"[LinkedIn Scraper] Notice for {keyword}/{location}: {e}")
+            
+    return jobs
+
 def search_all_portals() -> List[Dict]:
     results = []
-    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy)...")
+    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn)...")
     results.extend(search_remoteok_jobs())
     results.extend(search_arbeitnow_jobs())
     results.extend(search_remotive_jobs())
     results.extend(search_jobicy_jobs())
+    results.extend(search_linkedin_jobs())
 
     # Deduplicate
     seen = set()

@@ -24,6 +24,7 @@ class AutoApplyEngine:
             "phone": self.profile.phone,
             "current_location": self.profile.location,
             "github_profile": self.profile.github,
+            "linkedin_profile": getattr(self.profile, "linkedin", "https://www.linkedin.com"),
             "education": {
                 "degree": self.profile.degree,
                 "field_of_study": "Computer Applications (BCA)",
@@ -40,7 +41,7 @@ class AutoApplyEngine:
                 f"With practical software testing exposure, knowledge of bug tracking, manual test case design, and hands-on app development & AI skills, "
                 f"I am looking for an internship, trainee, or entry-level QA role where I can contribute to delivering high-quality software.\n\n"
                 f"I am proactive, detail-oriented, fully equipped for Work From Home (Remote setup), and available to join immediately.\n\n"
-                f"Thank you,\n{self.profile.name}\nPhone: {self.profile.phone}\nEmail: {self.profile.email}\nGitHub: {self.profile.github}"
+                f"Thank you,\n{self.profile.name}\nPhone: {self.profile.phone}\nEmail: {self.profile.email}\nGitHub: {self.profile.github}\nLinkedIn: {getattr(self.profile, 'linkedin', '')}"
             )
         }
 
