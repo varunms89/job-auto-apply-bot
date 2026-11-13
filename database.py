@@ -60,6 +60,20 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS assessments (
+                id SERIAL PRIMARY KEY,
+                company VARCHAR(255),
+                role_title VARCHAR(255),
+                platform VARCHAR(100),
+                test_url TEXT,
+                deadline_or_time VARCHAR(255),
+                prep_topic VARCHAR(100) DEFAULT 'General',
+                status VARCHAR(50) DEFAULT 'PENDING',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         # Create divided views in PostgreSQL
         cursor.execute("""
             CREATE OR REPLACE VIEW submitted_jobs AS
@@ -101,6 +115,20 @@ def init_db():
                 last_date TEXT,
                 link TEXT UNIQUE,
                 status TEXT DEFAULT 'NEW',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS assessments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company TEXT,
+                role_title TEXT,
+                platform TEXT,
+                test_url TEXT,
+                deadline_or_time TEXT,
+                prep_topic TEXT DEFAULT 'General',
+                status TEXT DEFAULT 'PENDING',
+                notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -176,3 +204,73 @@ def get_job_stats() -> Dict[str, int]:
     stats = {row[0]: row[1] for row in cursor.fetchall()}
     conn.close()
     return stats
+
+def record_assessment(company: str, role_title: str, platform: str, test_url: str,
+                      deadline_or_time: str, prep_topic: str = "General", status: str = "PENDING", notes: str = "") -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    ph = "%s" if DATABASE_URL else "?"
+    
+    if DATABASE_URL:
+        cursor.execute(f"""
+            INSERT INTO assessments (company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes, created_at)
+            VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, CURRENT_TIMESTAMP)
+            RETURNING id;
+        """, (company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes))
+        new_id = cursor.fetchone()[0]
+    else:
+        cursor.execute(f"""
+            INSERT INTO assessments (company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes, created_at)
+            VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, CURRENT_TIMESTAMP);
+        """, (company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes))
+        new_id = cursor.lastrowid
+        
+    conn.commit()
+    conn.close()
+    return new_id
+
+def get_assessments(status: Optional[str] = None) -> List[Dict[str, Any]]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    ph = "%s" if DATABASE_URL else "?"
+    
+    if status:
+        cursor.execute(f"""
+            SELECT id, company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes, created_at
+            FROM assessments
+            WHERE status = {ph}
+            ORDER BY id DESC
+        """, (status,))
+    else:
+        cursor.execute("""
+            SELECT id, company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes, created_at
+            FROM assessments
+            ORDER BY CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END, id DESC
+        """)
+        
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [
+        {
+            "id": r[0],
+            "company": r[1],
+            "role_title": r[2],
+            "platform": r[3],
+            "test_url": r[4],
+            "deadline_or_time": r[5],
+            "prep_topic": r[6],
+            "status": r[7],
+            "notes": r[8],
+            "created_at": str(r[9]) if r[9] else ""
+        }
+        for r in rows
+    ]
+
+def update_assessment_status(assessment_id: int, status: str = "COMPLETED"):
+    conn = get_connection()
+    cursor = conn.cursor()
+    ph = "%s" if DATABASE_URL else "?"
+    cursor.execute(f"UPDATE assessments SET status = {ph} WHERE id = {ph}", (status, assessment_id))
+    conn.commit()
+    conn.close()

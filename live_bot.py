@@ -21,6 +21,16 @@ def run_continuous_live_bot():
         try:
             print(f"\n🔄 [Cycle #{cycle_number}] Executing live job scan at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}...")
             run_job_bot_cycle(auto_apply=True)
+            
+            # Check for incoming assessment / interview invitation emails
+            try:
+                from email_monitor import check_gmail_inbox
+                detected = check_gmail_inbox()
+                if detected > 0:
+                    print(f"🚨 [Email Monitor] Detected {detected} new assessment/interview invite(s)!")
+            except Exception as mail_err:
+                print(f"ℹ️ [Email Monitor Note] {mail_err}")
+
             print(f"\n⏳ Cycle #{cycle_number} complete. Sleeping for {SCAN_INTERVAL_SECONDS // 60} minutes until next cycle...")
             cycle_number += 1
             time.sleep(SCAN_INTERVAL_SECONDS)

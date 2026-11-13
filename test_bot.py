@@ -76,5 +76,38 @@ class TestJobBot(unittest.TestCase):
         self.assertIn("VARUN M S", payload["cover_letter"])
         print("\n[Test Application Payload] Successfully prepared custom cover letter and applicant details.")
 
+    def test_assessment_email_detection(self):
+        from email_monitor import process_email_message
+        subject = "Invitation to Online Assessment from Siemens"
+        sender = "talent@siemens.com"
+        body = """
+        Dear Candidate,
+        You are invited to complete your online coding test on HackerRank.
+        Please complete the assessment before Nov 18, 2026.
+        Assessment Link: https://www.hackerrank.com/tests/siemens-intern-qa-2026
+        Best regards,
+        Siemens Recruiting
+        """
+        # test with auto_alert=False so we don't spam Telegram during unit test
+        result = process_email_message(subject, sender, body, auto_alert=False)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["platform"], "HackerRank")
+        self.assertIn("hackerrank.com", result["test_url"])
+        self.assertIn("Siemens", result["company"])
+        print(f"\n[Test Email Assessment Parser] Detected: {result['company']} | {result['platform']} | {result['deadline_or_time']}")
+
+    def test_prep_assistant_modules(self):
+        from prep_assistant import get_prep_module
+        qa_mod = get_prep_module("qa")
+        py_mod = get_prep_module("python")
+        ai_mod = get_prep_module("ai")
+
+        self.assertIn("Testing & QA", qa_mod["title"])
+        self.assertIn("Python", py_mod["title"])
+        self.assertIn("Artificial Intelligence", ai_mod["title"])
+        self.assertGreaterEqual(len(qa_mod["sections"]), 3)
+        self.assertGreaterEqual(len(py_mod["sections"]), 2)
+        print("\n[Test Prep Assistant] Verified study guides for QA, Python Coding, and AI/ML.")
+
 if __name__ == "__main__":
     unittest.main()

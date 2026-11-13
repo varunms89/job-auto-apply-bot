@@ -96,6 +96,33 @@ def generate_live_report() -> str:
     )
     return report
 
+def send_assessment_alert(company: str, role_title: str, platform: str, test_url: str,
+                          deadline_or_time: str, prep_topic: str = "General", instructions: str = "") -> bool:
+    """
+    Sends an urgent high-priority Telegram alert when a test link or online interview invite is detected.
+    """
+    alert = (
+        f"🚨 <b>TEST / ONLINE INTERVIEW ALERT!</b> 🚨\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>Candidate:</b> {USER_CONFIG.name}\n"
+        f"🏢 <b>Company:</b> <b>{company}</b>\n"
+        f"💼 <b>Role:</b> {role_title}\n"
+        f"💻 <b>Platform:</b> <code>{platform}</code>\n"
+        f"⏳ <b>Deadline / Time:</b> <b>{deadline_or_time}</b>\n"
+        f"📚 <b>Recommended Prep:</b> <code>{prep_topic}</code>\n"
+    )
+    if instructions:
+        alert += f"📝 <b>Note:</b> {instructions}\n"
+
+    alert += (
+        f"\n🔗 <a href='{test_url}'>👉 CLICK HERE TO TAKE TEST / JOIN</a>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 <i>Tip: Check the Preparation Hub on your Dashboard for QA & Python cheat sheets before starting!</i>"
+    )
+
+    print(f"\n🚨 [URGENT TELEGRAM ALERT] Dispatched test alert for {company} ({platform})")
+    return send_telegram_message(alert)
+
 def dispatch_report():
     report_text = generate_live_report()
     print("\n---------------------------------------------------------")
