@@ -21,6 +21,7 @@ def handle_command(text: str, chat_id: str):
             "• <b>/prep qa</b> - Software Testing & QA master review\n"
             "• <b>/prep python</b> - Solved coding assessment problems\n"
             "• <b>/prep ai</b> - AI & Machine Learning key topics\n"
+            "• <b>/morning</b> - Daily morning briefing & Question of the Day\n"
             "• <b>/resume</b> - Direct link to your live ATS resume\n"
             "━━━━━━━━━━━━━━━━━━━\n"
             "<i>Candidate: VARUN M S (BCA 2025)</i>"
@@ -122,6 +123,10 @@ def handle_command(text: str, chat_id: str):
             "📖 <a href='https://job-auto-apply-bot.onrender.com/prep'>Open Full Preparation Hub</a>"
         )
         send_telegram_message(msg, chat_id=chat_id)
+
+    elif cmd.startswith("/morning"):
+        from telegram_notifier import send_morning_briefing
+        send_morning_briefing()
 
     elif cmd.startswith("/resume"):
         msg = (

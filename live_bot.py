@@ -26,9 +26,21 @@ def run_continuous_live_bot():
         print(f"⚠️ Note on Telegram listener: {e}")
 
     cycle_number = 1
+    last_briefing_date = None
     while True:
         try:
-            print(f"\n🔄 [Cycle #{cycle_number}] Executing live job scan at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}...")
+            now = datetime.now()
+            # Daily Morning Briefing at 9:00 AM
+            if now.hour == 9 and last_briefing_date != now.date():
+                try:
+                    from telegram_notifier import send_morning_briefing
+                    send_morning_briefing()
+                    last_briefing_date = now.date()
+                    print("🌅 [Morning Briefing] Sent daily 9:00 AM briefing to Telegram!")
+                except Exception as br_err:
+                    print(f"⚠️ [Briefing Notice] {br_err}")
+
+            print(f"\n🔄 [Cycle #{cycle_number}] Executing live job scan at {now.strftime('%Y-%m-%d %H:%M:%S')}...")
             run_job_bot_cycle(auto_apply=True)
             
             # Check for incoming assessment / interview invitation emails

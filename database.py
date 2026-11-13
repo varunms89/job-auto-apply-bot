@@ -79,12 +79,12 @@ def init_db():
             CREATE OR REPLACE VIEW submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, applied_at, created_at
             FROM jobs
-            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
 
             CREATE OR REPLACE VIEW not_submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, created_at
             FROM jobs
-            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
         """)
     else:
         # SQLite schema
@@ -133,17 +133,19 @@ def init_db():
             )
         """)
         # Create divided views in SQLite
+        cursor.execute("DROP VIEW IF EXISTS submitted_jobs;")
+        cursor.execute("DROP VIEW IF EXISTS not_submitted_jobs;")
         cursor.execute("""
             CREATE VIEW IF NOT EXISTS submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, applied_at, created_at
             FROM jobs
-            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
         """)
         cursor.execute("""
             CREATE VIEW IF NOT EXISTS not_submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, created_at
             FROM jobs
-            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED');
+            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
         """)
     conn.commit()
     conn.close()
@@ -194,6 +196,21 @@ def mark_applied(job_id: str, status: str = "APPLIED"):
         SET status = {ph}, applied_at = CURRENT_TIMESTAMP 
         WHERE job_id = {ph}
     """, (status, job_id))
+    conn.commit()
+    conn.close()
+
+def update_job_status(identifier: Any, new_status: str):
+    """
+    Updates the pipeline status of an application (e.g. SUBMITTED, TEST_GIVEN, INTERVIEWING, OFFERED, REJECTED).
+    Supports either integer database ID or string job_id.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    ph = "%s" if DATABASE_URL else "?"
+    if str(identifier).isdigit():
+        cursor.execute(f"UPDATE jobs SET status = {ph} WHERE id = {ph} OR job_id = {ph}", (new_status, int(identifier), str(identifier)))
+    else:
+        cursor.execute(f"UPDATE jobs SET status = {ph} WHERE job_id = {ph}", (new_status, str(identifier)))
     conn.commit()
     conn.close()
 

@@ -123,6 +123,55 @@ def send_assessment_alert(company: str, role_title: str, platform: str, test_url
     print(f"\n🚨 [URGENT TELEGRAM ALERT] Dispatched test alert for {company} ({platform})")
     return send_telegram_message(alert)
 
+def send_morning_briefing() -> bool:
+    """
+    Sends the 9:00 AM daily job hunt briefing + Question of the Day to Telegram.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT count(*) FROM jobs")
+    total_scanned = cur.fetchone()[0]
+
+    cur.execute("SELECT count(*) FROM jobs WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED')")
+    total_applied = cur.fetchone()[0]
+
+    try:
+        cur.execute("SELECT count(*) FROM assessments WHERE status = 'PENDING'")
+        pending_tests = cur.fetchone()[0]
+    except Exception:
+        pending_tests = 0
+    conn.close()
+
+    # Question of the day from QA_PRACTICE_QUESTIONS
+    from prep_assistant import QA_PRACTICE_QUESTIONS
+    from datetime import datetime
+    day_idx = datetime.now().day % len(QA_PRACTICE_QUESTIONS)
+    q = QA_PRACTICE_QUESTIONS[day_idx]
+
+    opts = "\n".join([f"  {chr(65+i)}) {opt}" for i, opt in enumerate(q["options"])])
+
+    briefing = (
+        f"🌅 <b>GOOD MORNING VARUN! DAILY JOB BRIEFING</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📅 <b>Date:</b> {datetime.now().strftime('%A, %d %B %Y')}\n"
+        f"🎓 <b>Candidate:</b> {USER_CONFIG.name} (BCA 2025)\n\n"
+        f"📊 <b>Your Pipeline Status:</b>\n"
+        f"• Total Applications Submitted: <b>{total_applied}</b>\n"
+        f"• Total Opportunities Evaluated: <b>{total_scanned}</b>\n"
+        f"• Pending Tests / Invites: <b>{pending_tests}</b>\n\n"
+        f"🧠 <b>QUESTION OF THE DAY (QA / Testing):</b>\n"
+        f"<b>Q:</b> {q['question']}\n\n"
+        f"{opts}\n\n"
+        f"💡 <b>Answer & Reason:</b>\n"
+        f"<b>{chr(65+q['answer'])}) {q['options'][q['answer']]}</b>\n"
+        f"<i>{q['explanation']}</i>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"🔗 <a href='https://job-auto-apply-bot.onrender.com'>Open Live Dashboard</a> | <a href='https://job-auto-apply-bot.onrender.com/prep'>Prep Hub</a>"
+    )
+
+    return send_telegram_message(briefing)
+
 def dispatch_report():
     report_text = generate_live_report()
     print("\n---------------------------------------------------------")

@@ -72,6 +72,29 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
+        elif parsed_path.path == "/api/jobs/update-status":
+            try:
+                from database import update_job_status
+                if self.headers.get('Content-Type') == 'application/json':
+                    data = json.loads(post_data)
+                else:
+                    data = {k: v[0] for k, v in parse_qs(post_data).items()}
+                job_id = data.get("id") or data.get("job_id")
+                new_status = data.get("status", "SUBMITTED")
+                if job_id:
+                    update_job_status(job_id, new_status)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "new_status": new_status}).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+                return
+
         self.send_response(404)
         self.end_headers()
 
@@ -286,11 +309,11 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             conn = get_connection()
             cur = conn.cursor()
             
-            # 1. Submitted Jobs
+            # 1. Submitted Jobs (including all pipeline stages)
             cur.execute("""
                 SELECT id, title, company, platform, location, match_score, status, url 
                 FROM jobs 
-                WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED') 
+                WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
                 ORDER BY id DESC
             """)
             submitted_jobs = cur.fetchall()
@@ -299,7 +322,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             cur.execute("""
                 SELECT id, title, company, platform, location, match_score, match_reasons, url 
                 FROM jobs 
-                WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED') 
+                WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
                 ORDER BY id DESC LIMIT 25
             """)
             not_submitted_jobs = cur.fetchall()
@@ -320,6 +343,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
         pending_tests = [a for a in assessments if a["status"] == "PENDING"]
         completed_tests = [a for a in assessments if a["status"] == "COMPLETED"]
+        active_interviews = len([r for r in submitted_jobs if r[6] in ('INTERVIEWING', 'OFFERED')])
 
         html = f"""
         <!DOCTYPE html>
@@ -338,6 +362,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }}
                 .stat-card {{ background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #3b82f6; }}
                 .stat-card.green {{ border-left-color: #22c55e; }}
+                .stat-card.purple {{ border-left-color: #8b5cf6; }}
                 .stat-card.red {{ border-left-color: #ef4444; }}
                 .stat-card.gray {{ border-left-color: #94a3b8; }}
                 .card {{ background: white; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 30px; }}
@@ -358,6 +383,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 .btn-take:hover {{ background: #1d4ed8; }}
                 .btn-complete {{ background: #22c55e; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }}
                 .btn-complete:hover {{ background: #16a34a; }}
+                .status-select {{ padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; border: 1px solid #cbd5e1; cursor: pointer; background: white; }}
                 a {{ color: #2563eb; text-decoration: none; font-weight: 500; }}
                 a:hover {{ text-decoration: underline; }}
                 .quick-add-form {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; background: white; padding: 15px; border-radius: 6px; border: 1px solid #cbd5e1; }}
@@ -388,6 +414,10 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <div class="stat-card green">
                         <div style="color: #64748b; font-size: 0.85rem;">SUBMITTED APPLICATIONS</div>
                         <div style="font-size: 1.8rem; font-weight: bold; color: #15803d; margin-top: 5px;">{len(submitted_jobs)}</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <div style="color: #64748b; font-size: 0.85rem;">INTERVIEWS & OFFERS</div>
+                        <div style="font-size: 1.8rem; font-weight: bold; color: #7c3aed; margin-top: 5px;">{active_interviews}</div>
                     </div>
                     <div class="stat-card gray">
                         <div style="color: #64748b; font-size: 0.85rem;">UNSUBMITTED / DISCOVERED</div>
@@ -443,11 +473,38 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                         <h2 class="tag-submitted" style="margin:0; border-bottom:none;">✅ Part 1: Submitted Jobs & Internships ({len(submitted_jobs)})</h2>
                         <a href="/export/applications.csv" style="background:#0f172a; color:white; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; text-decoration:none;">📥 Export Applications (CSV)</a>
                     </div>
-                    <table>
+
+                    <!-- Search & Filter Bar -->
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin: 15px 0 15px 0;">
+                        <input type="text" id="jobSearch" placeholder="🔍 Search company, role, or keywords..." onkeyup="filterSubmittedJobs()" style="flex:2; min-width:200px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
+                        <select id="platformFilter" onchange="filterSubmittedJobs()" style="flex:1; min-width:140px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; background:white;">
+                            <option value="">All Platforms</option>
+                            <option value="Internshala">Internshala</option>
+                            <option value="LinkedIn">LinkedIn</option>
+                            <option value="Wellfound">Wellfound Startups</option>
+                            <option value="Freshers">Freshers Portals</option>
+                            <option value="RemoteOK">RemoteOK</option>
+                            <option value="Jobicy">Jobicy</option>
+                        </select>
+                        <select id="statusFilter" onchange="filterSubmittedJobs()" style="flex:1; min-width:140px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; background:white;">
+                            <option value="">All Pipeline Statuses</option>
+                            <option value="SUBMITTED">SUBMITTED</option>
+                            <option value="TEST_GIVEN">TEST GIVEN</option>
+                            <option value="INTERVIEWING">INTERVIEWING</option>
+                            <option value="OFFERED">OFFERED</option>
+                            <option value="REJECTED">REJECTED</option>
+                        </select>
+                    </div>
+
+                    <table id="submittedTable">
                         <thead>
-                            <tr><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Match Score</th><th>Status</th><th>Link</th><th>Outreach</th></tr>
+                            <tr><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Match Score</th><th>Pipeline Status</th><th>Link</th><th>Outreach</th></tr>
                         </thead>
                         <tbody>
+                            {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><b>{r[5]}/100</b></td><td><select class='status-select' onchange='changeJobStatus({r[0]}, this.value)'><option value='SUBMITTED' {'selected' if r[6] in ('SUBMITTED','APPLIED','APPLIED_READY') else ''}>SUBMITTED</option><option value='TEST_GIVEN' {'selected' if r[6]=='TEST_GIVEN' else ''}>TEST GIVEN</option><option value='INTERVIEWING' {'selected' if r[6]=='INTERVIEWING' else ''}>INTERVIEWING</option><option value='OFFERED' {'selected' if r[6]=='OFFERED' else ''}>OFFERED</option><option value='REJECTED' {'selected' if r[6]=='REJECTED' else ''}>REJECTED</option></select></td><td><a href='{r[7]}' target='_blank'>View Job ↗</a></td><td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach(\\\"{r[2].replace(chr(34), \"\").replace(chr(39), \"\")}\\\", \\\"{r[1].replace(chr(34), \"\").replace(chr(39), \"\")}\\\")'>✉️ Outreach</button></td></tr>" for idx, r in enumerate(submitted_jobs, 1)]) if submitted_jobs else "<tr><td colspan='8'>No jobs submitted yet.</td></tr>"}
+                        </tbody>
+                    </table>
+                </div>
                             {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><b>{r[5]}/100</b></td><td><span class='badge-success'>{r[6]}</span></td><td><a href='{r[7]}' target='_blank'>View Job ↗</a></td><td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach(\\\"{r[2].replace(chr(34), \"\").replace(chr(39), \"\")}\\\", \\\"{r[1].replace(chr(34), \"\").replace(chr(39), \"\")}\\\")'>✉️ Outreach</button></td></tr>" for idx, r in enumerate(submitted_jobs, 1)]) if submitted_jobs else "<tr><td colspan='8'>No jobs submitted yet.</td></tr>"}
                         </tbody>
                     </table>
@@ -506,6 +563,30 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     copyText.select();
                     document.execCommand("copy");
                     document.getElementById('copyBtn').innerText = "✅ Copied to Clipboard!";
+                }
+
+                function changeJobStatus(jobId, newStatus) {
+                    fetch('/api/jobs/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: jobId, status: newStatus })
+                    }).then(res => res.json()).then(data => {
+                        console.log('Status updated to', newStatus);
+                    }).catch(err => console.error(err));
+                }
+
+                function filterSubmittedJobs() {
+                    let searchVal = document.getElementById('jobSearch').value.toLowerCase();
+                    let platformVal = document.getElementById('platformFilter').value.toLowerCase();
+                    let statusVal = document.getElementById('statusFilter').value.toLowerCase();
+                    let rows = document.querySelectorAll('#submittedTable tbody tr');
+                    rows.forEach(row => {
+                        let text = row.innerText.toLowerCase();
+                        let matchSearch = !searchVal || text.includes(searchVal);
+                        let matchPlatform = !platformVal || text.includes(platformVal);
+                        let matchStatus = !statusVal || text.includes(statusVal);
+                        row.style.display = (matchSearch && matchPlatform && matchStatus) ? '' : 'none';
+                    });
                 }
             </script>
         </body>
