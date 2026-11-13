@@ -21,13 +21,24 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
 
     # 2. Role Title Matching
     primary_qa_keywords = ["tester", "qa", "quality assurance", "test engineer", "software testing", "test analyst", "manual test"]
+    
+    # AI & Programming Language Internships / Entry-level roles
+    ai_and_programming_keywords = [
+        "ai intern", "artificial intelligence intern", "machine learning intern", "ml intern",
+        "genai intern", "generative ai", "ai trainee", "ai engineer intern", "ai research intern",
+        "python intern", "python developer intern", "software intern", "developer intern",
+        "software engineering intern", "software developer intern", "programming intern",
+        "backend intern", "frontend intern", "web development intern", "coding intern"
+    ]
+
     allied_keywords = [
         "support engineer", "technical support", "tech support", "application support", 
         "qa support", "it support", "trainee", "qa intern", "testing intern", "test intern",
-        "junior developer", "junior software", "graduate engineer", "software intern", "developer intern", "data trainee"
+        "junior developer", "junior software", "junior python", "graduate engineer", "data trainee"
     ]
 
     is_primary_qa = any(kw in title_lower for kw in primary_qa_keywords)
+    is_ai_or_coding = any(kw in title_lower for kw in ai_and_programming_keywords)
     is_allied = any(kw in title_lower for kw in allied_keywords)
 
     # Exclude non-tech intern roles like marketing, hr, people ops, sales intern
@@ -35,12 +46,17 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
     if any(nt in title_lower for nt in non_tech_flags):
         return 0.0, "Rejected: Non-technical role"
 
-    if not (is_primary_qa or is_allied):
-        # Check description for strong QA/testing context
-        if any(kw in description.lower() for kw in ["software testing", "manual testing", "qa testing", "test cases", "bug reporting"]):
-            is_primary_qa = True
-        else:
-            return 0.0, "Rejected: Role is neither QA/Testing nor allied technical support/trainee role"
+    if not (is_primary_qa or is_ai_or_coding or is_allied):
+        # Check description for strong AI / coding / QA context in tech intern roles
+        if "intern" in title_lower or "trainee" in title_lower:
+            if any(k in full_text for k in ["python", "artificial intelligence", "machine learning", "software engineering", "coding", "software developer"]):
+                is_ai_or_coding = True
+        
+        if not is_ai_or_coding:
+            if any(kw in description.lower() for kw in ["software testing", "manual testing", "qa testing", "test cases", "bug reporting"]):
+                is_primary_qa = True
+            else:
+                return 0.0, "Rejected: Role is not QA, AI/Programming internship, or technical support role"
 
     # 3. Location / Work Mode Matching
     wfh_terms = ["remote", "work from home", "wfh", "anywhere", "telecommute", "home-based", "virtual", "worldwide"]
@@ -59,6 +75,9 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
     if is_primary_qa:
         score += 25.0
         reasons.append("🎯 Direct Software Tester / QA role")
+    elif is_ai_or_coding:
+        score += 25.0
+        reasons.append("🤖 AI & Programming Internship role")
     else:
         score += 15.0
         reasons.append("🛠️ Allied Tech Support / Trainee role")

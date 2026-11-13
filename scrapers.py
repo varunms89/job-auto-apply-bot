@@ -147,7 +147,12 @@ def search_linkedin_jobs() -> List[Dict]:
         ("Software%20Tester", "Bengaluru"),
         ("QA%20Engineer", "Bengaluru"),
         ("Software%20Tester", "India"),
-        ("QA%20Intern", "India")
+        ("QA%20Intern", "India"),
+        ("AI%20Intern", "Bengaluru"),
+        ("AI%20Intern", "India"),
+        ("Python%20Intern", "Bengaluru"),
+        ("Machine%20Learning%20Intern", "India"),
+        ("Software%20Developer%20Intern", "Bengaluru")
     ]
     
     linkedin_cookie = os.environ.get("LINKEDIN_LI_AT", "")

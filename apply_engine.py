@@ -36,11 +36,12 @@ class AutoApplyEngine:
             "skills": ", ".join(self.profile.skills),
             "cover_letter": (
                 f"Hello Hiring Team,\n\n"
-                f"I am writing to express my eager interest in the {job.get('title', 'Software QA / Tester')} position at {job.get('company', 'your company')}. "
-                f"I completed my 12th standard in Commerce and am currently in my final year of Bachelor of Computer Applications (BCA) at GSC Hassan (graduating 2025). "
-                f"With practical software testing exposure, knowledge of bug tracking, manual test case design, and hands-on app development & AI skills, "
-                f"I am looking for an internship, trainee, or entry-level QA role where I can contribute to delivering high-quality software.\n\n"
-                f"I am proactive, detail-oriented, fully equipped for Work From Home (Remote setup), and available to join immediately.\n\n"
+                f"I am writing to express my strong interest in the {job.get('title', 'Technical Internship / Software')} position at {job.get('company', 'your company')}. "
+                f"I am currently in my final year of Bachelor of Computer Applications (BCA) at GSC Hassan (graduating 2025). "
+                f"I have hands-on experience in Python programming, Artificial Intelligence (AI/ML) tools, application development, and software testing & QA. "
+                f"I have actively built projects and published work on GitHub (https://github.com/varunms89). "
+                f"Whether for an AI internship, Python developer intern, or QA engineering role, I am eager to apply my technical and analytical skills to deliver impactful software.\n\n"
+                f"I am proactive, detail-oriented, fully equipped for Work From Home / Remote setup, open to Bangalore/Karnataka on-site/hybrid, and available to start immediately.\n\n"
                 f"Thank you,\n{self.profile.name}\nPhone: {self.profile.phone}\nEmail: {self.profile.email}\nGitHub: {self.profile.github}\nLinkedIn: {getattr(self.profile, 'linkedin', '')}"
             )
         }

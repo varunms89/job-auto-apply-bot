@@ -38,16 +38,27 @@ class TestJobBot(unittest.TestCase):
         self.assertIn("Bangalore / Karnataka / India", reasons)
         print(f"[Test Match Bangalore QA] Score: {score} | Reasons: {reasons}")
 
-    def test_allied_support_matching(self):
-        title = "Technical Support Engineer Trainee"
-        desc = "Entry-level technical support, troubleshooting, bug reporting. Remote or Bangalore."
-        company = "SupportDesk Co"
+    def test_ai_internship_matching(self):
+        title = "Artificial Intelligence Intern"
+        desc = "Seeking an AI intern with Python skills, familiarity with machine learning libraries and generative AI tools."
+        company = "AI Nexus Labs"
+        location = "Bangalore / Remote"
+
+        score, reasons = evaluate_job_match(title, desc, company, location)
+        self.assertGreaterEqual(score, 60.0)
+        self.assertIn("AI & Programming Internship", reasons)
+        print(f"[Test Match AI Internship] Score: {score} | Reasons: {reasons}")
+
+    def test_python_programming_intern_matching(self):
+        title = "Python Developer Intern"
+        desc = "Exciting internship opportunity for BCA/BTech freshers to work on Python backend and AI apps."
+        company = "InnoTech Solutions"
         location = "Remote"
 
         score, reasons = evaluate_job_match(title, desc, company, location)
-        self.assertGreaterEqual(score, 50.0)
-        self.assertIn("Allied Tech Support", reasons)
-        print(f"[Test Match Allied Support] Score: {score} | Reasons: {reasons}")
+        self.assertGreaterEqual(score, 60.0)
+        self.assertIn("AI & Programming Internship", reasons)
+        print(f"[Test Match Python Intern] Score: {score} | Reasons: {reasons}")
 
     def test_auto_apply_payload(self):
         engine = AutoApplyEngine(dry_run=True)
