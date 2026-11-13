@@ -93,6 +93,18 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(assessments).encode("utf-8"))
             return
 
+        if parsed_path.path == "/resume":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            resume_path = os.path.join(os.path.dirname(__file__), "VARUN_M_S_Resume.html")
+            if os.path.exists(resume_path):
+                with open(resume_path, "r", encoding="utf-8") as rf:
+                    self.wfile.write(rf.read().encode("utf-8"))
+            else:
+                self.wfile.write(b"<h1>Resume not found.</h1>")
+            return
+
         if parsed_path.path == "/prep":
             # Preparation & Practice Hub
             self.render_prep_hub()
@@ -147,6 +159,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div style="font-weight: bold; font-size: 1.1rem;">🤖 Job Bot Hub</div>
                 <div>
                     <a href="/">⬅ Back to Job Dashboard</a>
+                    <a href="/resume" target="_blank">📄 ATS Resume</a>
                     <a href="/prep" class="active">📚 Preparation & Practice</a>
                     <a href="https://t.me/" target="_blank">📱 Telegram Alerts</a>
                 </div>
@@ -278,6 +291,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div style="font-weight: bold; font-size: 1.1rem;">🤖 Job Auto-Apply Bot & Test Hub</div>
                 <div>
                     <a href="/" class="active">📊 Dashboard</a>
+                    <a href="/resume" target="_blank">📄 ATS Resume</a>
                     <a href="/prep">📚 Preparation Hub (QA / Python / AI)</a>
                     <a href="/healthz">🩺 Health Check</a>
                 </div>
