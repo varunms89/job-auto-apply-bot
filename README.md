@@ -86,10 +86,19 @@ This suite includes an exportable, industry-standard Postman Collection format (
    - Bearer token authorization header validation.
    - Clean order deletion / cancellation validation (`200 OK` / `204 No Content`).
 
-### How to Run in Postman:
+### How to Run in Postman or Newman:
+
+#### Option A: 1-Click Import into Postman (Pre-configured with Live Cloud API)
 1. Open Postman -> Click **Import** (top left).
-2. Drag and drop `Varun_MS_Ecommerce_API_Tests.postman_collection.json`.
-3. Click **Run Collection** to execute all automated test assertions!
+2. Select or drag & drop `Varun_MS_Ecommerce_API_Tests.postman_collection.json`.
+3. The collection is already pre-configured to hit the 24/7 live mock server at `https://job-auto-apply-bot.onrender.com`.
+4. Click **Run Collection** -> Watch all status, latency, and schema assertions pass with green checkmarks!
+
+#### Option B: Run Headless via Newman CLI
+```bash
+# Execute against the live cloud mock server:
+npx newman run Varun_MS_Ecommerce_API_Tests.postman_collection.json --env-var base_url=https://job-auto-apply-bot.onrender.com
+```
 
 ---
 

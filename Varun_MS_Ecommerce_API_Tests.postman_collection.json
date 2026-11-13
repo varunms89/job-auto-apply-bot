@@ -316,7 +316,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "https://api.ecom-staging.example.com",
+			"value": "https://job-auto-apply-bot.onrender.com",
 			"type": "string"
 		}
 	]
