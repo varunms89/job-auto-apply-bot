@@ -192,7 +192,7 @@ def load_env_credentials():
 def check_gmail_inbox() -> int:
     """
     Connects to Gmail via IMAP if credentials exist in environment or .env.
-    Scans unseen messages for test links.
+    Scans recent unseen messages specifically for assessment & interview invitations.
     """
     load_env_credentials()
     user = os.environ.get("IMAP_USER") or os.environ.get("EMAIL_USER")
@@ -202,25 +202,36 @@ def check_gmail_inbox() -> int:
         return 0
 
     password = password.replace(" ", "")
-
-    if not user or not password:
-        # Credentials not set; wait for configuration or manual/webhook triggers
-        return 0
-
     detected_count = 0
     try:
+        from datetime import datetime, timedelta
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(user, password)
         mail.select("inbox")
 
-        # Search for unread emails
-        status, data = mail.search(None, 'UNSEEN')
-        if status != "OK":
-            mail.logout()
-            return 0
+        # Inspect unread messages from the last 5 days for assessment indicators
+        since_date = (datetime.now() - timedelta(days=5)).strftime('%d-%b-%Y')
+        target_queries = [
+            'SUBJECT "assessment"',
+            'SUBJECT "coding test"',
+            'SUBJECT "interview"',
+            'SUBJECT "test link"',
+            'FROM "hackerrank"',
+            'FROM "codility"',
+            'FROM "testgorilla"',
+            'FROM "hirevue"',
+            'FROM "mettl"',
+            'FROM "unstop"'
+        ]
 
-        mail_ids = data[0].split()
-        for m_id in mail_ids[-10:]: # Inspect last 10 unread
+        matched_ids = set()
+        for query in target_queries:
+            status, data = mail.search(None, f'(UNSEEN SINCE "{since_date}" {query})')
+            if status == "OK" and data[0]:
+                for i in data[0].split():
+                    matched_ids.add(i)
+
+        for m_id in matched_ids:
             status, msg_data = mail.fetch(m_id, "(RFC822)")
             if status != "OK":
                 continue
@@ -247,7 +258,7 @@ def check_gmail_inbox() -> int:
                     parsed = process_email_message(subject, sender, body, auto_alert=True)
                     if parsed:
                         detected_count += 1
-                        # Mark email as read
+                        # Mark email as read once processed
                         mail.store(m_id, '+FLAGS', '\\Seen')
 
         mail.logout()
