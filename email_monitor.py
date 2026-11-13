@@ -176,13 +176,32 @@ def process_email_message(subject: str, sender: str, body_text: str, auto_alert:
 
     return result
 
+def load_env_credentials():
+    env_file = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_file):
+        with open(env_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip().replace('"', '').replace("'", '')
+                    if k not in os.environ:
+                        os.environ[k] = v
+
 def check_gmail_inbox() -> int:
     """
-    Connects to Gmail via IMAP if credentials exist in environment.
+    Connects to Gmail via IMAP if credentials exist in environment or .env.
     Scans unseen messages for test links.
     """
+    load_env_credentials()
     user = os.environ.get("IMAP_USER") or os.environ.get("EMAIL_USER")
     password = os.environ.get("IMAP_PASSWORD") or os.environ.get("EMAIL_PASSWORD")
+
+    if not user or not password:
+        return 0
+
+    password = password.replace(" ", "")
 
     if not user or not password:
         # Credentials not set; wait for configuration or manual/webhook triggers
