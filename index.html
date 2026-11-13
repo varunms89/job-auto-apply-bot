@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VARUN M S | Software Tester (QA) & Python Developer | Portfolio</title>
+    <meta name="description" content="Portfolio of Varun M S - Final Year BCA 2025 student specializing in Software Testing & QA, API Testing (Postman), Python, and AI Prompt Engineering.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #090d16;
+            --surface: #0f172a;
+            --surface-hover: #1e293b;
+            --border: #334155;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --purple: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Glow Background */
+        .ambient-glow {
+            position: fixed;
+            top: -20%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(168, 85, 247, 0.06) 50%, transparent 70%);
+            filter: blur(80px);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(16px);
+            background: rgba(9, 13, 22, 0.85);
+            border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+            z-index: 100;
+        }
+
+        nav {
+            max-width: 1150px;
+            margin: 0 auto;
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
+        .btn-cta {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white !important;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600 !important;
+            font-size: 0.88rem !important;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+        }
+
+        .container {
+            max-width: 1150px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: left;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.25);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -1.5px;
+            margin-bottom: 20px;
+            background: linear-gradient(180deg, #ffffff 40%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 720px;
+            margin-bottom: 35px;
+            font-weight: 400;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-hover);
+            border-color: #64748b;
+            transform: translateY(-2px);
+        }
+
+        /* Badges list */
+        .tags-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 35px;
+        }
+
+        .tech-pill {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #cbd5e1;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Section Headings */
+        .section-header {
+            margin: 70px 0 30px;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Projects Grid */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+            margin-bottom: 50px;
+        }
+
+        .project-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .project-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #60a5fa;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .project-card h3 {
+            font-size: 1.35rem;
+            margin-bottom: 12px;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .project-card p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            margin-bottom: 20px;
+            line-height: 1.55;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-bottom: 24px;
+            font-size: 0.88rem;
+            color: #cbd5e1;
+        }
+
+        .feature-list li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .card-footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            border-top: 1px solid rgba(51, 65, 85, 0.5);
+            padding-top: 18px;
+            margin-top: auto;
+        }
+
+        .card-link {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #60a5fa;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Skills Matrix */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .skill-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 22px;
+        }
+
+        .skill-box h4 {
+            font-size: 1.05rem;
+            margin-bottom: 14px;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .skill-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            color: #e2e8f0;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            background: #060911;
+            padding: 50px 0;
+            margin-top: 80px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .footer-socials {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .footer-socials a {
+            color: #cbd5e1;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .footer-socials a:hover {
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.4rem; }
+            .hero p { font-size: 1.05rem; }
+            .projects-grid { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+
+    <header>
+        <nav>
+            <div class="brand">
+                <div class="brand-dot"></div>
+                VARUN M S
+            </div>
+            <div class="nav-links">
+                <a href="#projects">Projects</a>
+                <a href="#skills">Skills</a>
+                <a href="resume.html" target="_blank">Resume (PDF)</a>
+                <a href="https://job-auto-apply-bot.onrender.com/prep" target="_blank">Prep Hub</a>
+                <a href="#contact" class="btn-cta">Contact Varun</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="status-badge">
+                <span style="font-size: 1rem;">🎓</span> Final Year BCA (2025) &bull; Available for QA / Python Roles & Remote Internships
+            </div>
+            <h1>Software Tester (QA)<br>& Python Developer</h1>
+            <p>
+                Specializing in <b>Manual & API Testing (Postman)</b>, test case design, defect tracking, and <b>Python AI data workflows</b>. Graduating in May 2025 from Government Science College, Hassan.
+            </p>
+            <div class="hero-actions">
+                <a href="resume.html" target="_blank" class="btn-secondary" style="background:#2563eb; border-color:#2563eb; color:white;">
+                    📄 View ATS Resume
+                </a>
+                <a href="https://github.com/varunms89/qa-ecommerce-test-suite" target="_blank" class="btn-secondary">
+                    🧪 QA Test Suite GitHub
+                </a>
+                <a href="https://wa.me/918861639284" target="_blank" class="btn-secondary" style="border-color:#22c55e; color:#4ade80;">
+                    💬 WhatsApp (+91 8861639284)
+                </a>
+            </div>
+
+            <div class="tags-row">
+                <span class="tech-pill">Manual Testing</span>
+                <span class="tech-pill">Postman API Testing</span>
+                <span class="tech-pill">STLC & SDLC</span>
+                <span class="tech-pill">Boundary Value Analysis</span>
+                <span class="tech-pill">Bug Life Cycle</span>
+                <span class="tech-pill">Python</span>
+                <span class="tech-pill">PostgreSQL / SQL</span>
+                <span class="tech-pill">Git / GitHub</span>
+                <span class="tech-pill">AI Prompt Engineering</span>
+            </div>
+        </section>
+
+        <!-- Featured Projects Section -->
+        <section id="projects">
+            <div class="section-header">
+                <h2>Featured Technical Projects</h2>
+                <p>Real-world testing suites, automation scripts, and AI tools with public repositories.</p>
+            </div>
+
+            <div class="projects-grid">
+                <!-- Project 1: QA E-Commerce Test Suite -->
+                <div class="project-card">
+                    <div>
+                        <span class="project-tag">Quality Assurance & API Testing</span>
+                        <h3>E-Commerce QA Test Suite & Postman API Collection</h3>
+                        <p>
+                            Comprehensive STLC testing package for an e-commerce platform covering functional, boundary, negative, and REST API validation.
+                        </p>
+                        <ul class="feature-list">
+                            <li><b>50+ Test Cases</b> authored using Equivalence Partitioning & Boundary Value Analysis.</li>
+                            <li><b>Exportable Postman Collection:</b> Automated assertions on Status 200/201, latency &lt; 500ms, and token auth.</li>
+                            <li><b>IEEE 829 Test Plan & Bug Reports</b> with standardized reproduction steps and severity/priority metrics.</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="https://github.com/varunms89/qa-ecommerce-test-suite" target="_blank" class="card-link">
+                            📁 View on GitHub &rarr;
+                        </a>
+                        <a href="https://raw.githubusercontent.com/varunms89/qa-ecommerce-test-suite/main/Varun_MS_Ecommerce_API_Tests.postman_collection.json" download class="card-link" style="color:#a855f7;">
+                            📥 Postman JSON Collection
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Project 2: AI Resume Screener -->
+                <div class="project-card">
+                    <div>
+                        <span class="project-tag">Python & Artificial Intelligence</span>
+                        <h3>AI Resume Screener & Semantic ATS Parser</h3>
+                        <p>
+                            Python utility implementing semantic keyword extraction, TF-IDF scoring, and prompt engineering to evaluate candidates against job descriptions.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Semantic ATS similarity matching using Python data processing libraries.</li>
+                            <li>Few-shot prompt templates to generate candidate fit summaries.</li>
+                            <li>Instant terminal scoring breakdown with missing skill gap identification.</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="https://github.com/varunms89/ai-resume-screener" target="_blank" class="card-link">
+                            📁 View on GitHub &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Project 3: Autonomous Job & Assessment Hub -->
+                <div class="project-card">
+                    <div>
+                        <span class="project-tag">Full-Stack Cloud & Automation</span>
+                        <h3>Autonomous Job Application & Assessment Intelligence Hub</h3>
+                        <p>
+                            Cloud microservice running 24/7 on Render that evaluates job feeds, monitors Gmail for HackerRank/Codility assessment invites, and alerts via Telegram.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Dual-mode database persistence with PostgreSQL and SQLite fallback.</li>
+                            <li>Real-time IMAP email listener with instant Telegram high-priority alerts.</li>
+                            <li>Interactive web dashboard with search, status pipeline, and interview prep guides.</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="https://job-auto-apply-bot.onrender.com" target="_blank" class="card-link" style="color:#22c55e;">
+                            🌐 Live Cloud Dashboard &rarr;
+                        </a>
+                        <a href="https://github.com/varunms89/job-auto-apply-bot" target="_blank" class="card-link">
+                            📁 View on GitHub &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Skills Section -->
+        <section id="skills">
+            <div class="section-header">
+                <h2>Technical Proficiencies</h2>
+                <p>Core competencies developed through BCA coursework and production projects.</p>
+            </div>
+
+            <div class="skills-grid">
+                <div class="skill-box">
+                    <h4>🧪 Software Testing & QA</h4>
+                    <div class="skill-tags">
+                        <span class="skill-item">Manual Testing</span>
+                        <span class="skill-item">Test Case Design</span>
+                        <span class="skill-item">STLC & SDLC</span>
+                        <span class="skill-item">Defect Life Cycle</span>
+                        <span class="skill-item">Boundary Value Analysis</span>
+                        <span class="skill-item">Equivalence Partitioning</span>
+                        <span class="skill-item">Regression Testing</span>
+                        <span class="skill-item">Smoke & Sanity</span>
+                    </div>
+                </div>
+
+                <div class="skill-box">
+                    <h4>🔌 API & Database Testing</h4>
+                    <div class="skill-tags">
+                        <span class="skill-item">Postman API Testing</span>
+                        <span class="skill-item">HTTP Status Codes</span>
+                        <span class="skill-item">JSON Payloads</span>
+                        <span class="skill-item">SQL / PostgreSQL</span>
+                        <span class="skill-item">Postico GUI</span>
+                        <span class="skill-item">CRUD Verification</span>
+                    </div>
+                </div>
+
+                <div class="skill-box">
+                    <h4>🐍 Programming & Data</h4>
+                    <div class="skill-tags">
+                        <span class="skill-item">Python 3</span>
+                        <span class="skill-item">Data Structures</span>
+                        <span class="skill-item">NumPy & Pandas</span>
+                        <span class="skill-item">Prompt Engineering</span>
+                        <span class="skill-item">Few-Shot Prompting</span>
+                        <span class="skill-item">RAG Architectures</span>
+                    </div>
+                </div>
+
+                <div class="skill-box">
+                    <h4>🛠️ Developer Tools</h4>
+                    <div class="skill-tags">
+                        <span class="skill-item">Git & GitHub</span>
+                        <span class="skill-item">VS Code</span>
+                        <span class="skill-item">macOS / Linux zsh</span>
+                        <span class="skill-item">Render Cloud</span>
+                        <span class="skill-item">Telegram Bot API</span>
+                        <span class="skill-item">Chrome DevTools</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Education & Academics -->
+        <section style="margin-top: 60px;">
+            <div class="section-header">
+                <h2>Education & Academic Timeline</h2>
+            </div>
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:25px;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;">
+                    <h3 style="font-size:1.2rem; color:white;">Bachelor of Computer Applications (BCA)</h3>
+                    <span style="color:#60a5fa; font-weight:600; font-family:'JetBrains Mono', monospace;">2022 – May 2025</span>
+                </div>
+                <div style="color:#94a3b8; font-weight:500; margin-bottom:12px;">Government Science College (GSC), Hassan, Karnataka</div>
+                <p style="color:#cbd5e1; font-size:0.9rem;">
+                    Coursework: Software Engineering, Database Management Systems (DBMS), Python Programming, Data Structures, Web Technology, Computer Networks.
+                </p>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" style="margin-top: 70px; text-align:center; padding:50px 20px; background:var(--surface); border-radius:16px; border:1px solid var(--border);">
+            <h2 style="font-size:2rem; margin-bottom:12px;">Let's Connect & Discuss Opportunities</h2>
+            <p style="color:var(--text-muted); max-width:600px; margin:0 auto 30px;">
+                I am actively seeking an entry-level <b>Software Tester / QA Engineer</b> role or <b>AI / Python Developer Internship</b> (Remote / WFH or Bangalore).
+            </p>
+            <div style="display:flex; justify-content:center; flex-wrap:wrap; gap:16px;">
+                <a href="mailto:msvarun89@gmail.com" class="btn-secondary" style="background:#2563eb; border-color:#2563eb; color:white;">
+                    ✉️ msvarun89@gmail.com
+                </a>
+                <a href="https://wa.me/918861639284" target="_blank" class="btn-secondary" style="border-color:#22c55e; color:#4ade80;">
+                    💬 WhatsApp: +91 8861639284
+                </a>
+                <a href="https://www.linkedin.com/in/varun-m-s-8861639284" target="_blank" class="btn-secondary">
+                    🔗 LinkedIn Profile
+                </a>
+                <a href="https://github.com/varunms89" target="_blank" class="btn-secondary">
+                    🐙 GitHub (@varunms89)
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="footer-socials">
+            <a href="https://github.com/varunms89" target="_blank">GitHub</a>
+            <a href="https://www.linkedin.com/in/varun-m-s-8861639284" target="_blank">LinkedIn</a>
+            <a href="resume.html" target="_blank">Resume</a>
+            <a href="https://job-auto-apply-bot.onrender.com" target="_blank">Job Bot Hub</a>
+        </div>
+        <p>&copy; 2025 VARUN M S. Built for recruiters & engineering teams.</p>
+    </footer>
+</body>
+</html>
