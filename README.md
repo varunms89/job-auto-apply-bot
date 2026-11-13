@@ -22,8 +22,40 @@ This repository contains an industry-standard Quality Assurance (QA) test docume
 ├── TEST_PLAN.md                                       # Comprehensive IEEE 829 Test Plan
 ├── TEST_CASES.md                                      # Detailed test cases (Auth, Catalog, Cart, Checkout, Payment)
 ├── BUG_REPORTS.md                                     # Defect reports with severity/priority classification
-└── Varun_MS_Ecommerce_API_Tests.postman_collection.json # Ready-to-import Postman REST API test collection
+├── Varun_MS_Ecommerce_API_Tests.postman_collection.json # Ready-to-import Postman REST API test collection
+├── requirements.txt                                   # Python Playwright & pytest dependencies
+└── tests/
+    └── test_ecommerce_checkout.py                     # Python Playwright E2E UI automation test script
 ```
+
+---
+
+## 🤖 Python Playwright End-to-End Automation
+
+An automated browser test suite implemented in **Python & Playwright** (`tests/test_ecommerce_checkout.py`) validating the entire customer purchase journey:
+
+### Test Scenarios Automated:
+1. **User Authentication:** Enters test credentials and verifies successful login.
+2. **Catalog Integrity:** Validates all products loaded with prices and images.
+3. **Add to Cart:** Selects item, clicks add-to-cart, and asserts cart badge increment.
+4. **Checkout Form:** Enters shipping info and verifies field validations.
+5. **Arithmetic Assertions:** Validates `Subtotal + Tax == Total Price` with floating-point precision.
+6. **Order Placement:** Confirms final order dispatch and captures `checkout_verified.png`.
+
+### How to Run:
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+playwright install chromium
+
+# 2. Run via pytest
+pytest tests/ -v
+
+# Or run directly with Python
+python tests/test_ecommerce_checkout.py
+```
+
+---
 
 ---
 
