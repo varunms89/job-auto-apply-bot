@@ -200,14 +200,83 @@ def search_linkedin_jobs() -> List[Dict]:
             
     return jobs
 
+def search_internshala_internships() -> List[Dict]:
+    """
+    Scrapes high-volume Indian online/remote internships from Internshala
+    for AI, Python, Software Testing / QA, and Bangalore tech internships.
+    """
+    categories = [
+        ("work-from-home-artificial-intelligence-ai-internships", "Artificial Intelligence Intern", "Work From Home / Remote"),
+        ("work-from-home-software-testing-internships", "Software Tester / QA Intern", "Work From Home / Remote"),
+        ("work-from-home-python-django-internships", "Python Developer Intern", "Work From Home / Remote"),
+        ("computer-science-internship-in-bangalore", "CS / Software Intern", "Bangalore, India")
+    ]
+    jobs = []
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    }
+
+    for slug, default_title, default_loc in categories:
+        try:
+            url = f"https://internshala.com/internships/{slug}/"
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, context=SSL_CTX, timeout=12) as resp:
+                html = resp.read().decode('utf-8', errors='ignore')
+
+                raw_cards = re.findall(r'<div[^>]*id=\"individual_internship_[0-9]+\"[^>]*>[\s\S]*?(?=<div[^>]*id=\"individual_internship_[0-9]+\"|$)', html)
+                for card in raw_cards:
+                    t_m = re.search(r'<a[^>]*job-title-href[^>]*>[\s\S]*?</a>', card)
+                    c_m = re.search(r'<p[^>]*class=[\"\'][^\"\']*company-name[^\"\']*[\"\'][^>]*>[\s\n]*([^<]+)[\s\n]*</p>', card)
+                    if not c_m:
+                        c_m = re.search(r'<a[^>]*class=[\"\'][^\"\']*company-name[^\"\']*[\"\'][^>]*>[\s\n]*([^<]+)[\s\n]*</a>', card)
+                    loc_m = re.search(r'<a[^>]*class=[\"\'][^\"\']*location_link[^\"\']*[\"\'][^>]*>[\s\n]*([^<]+)[\s\n]*</a>', card)
+
+                    if t_m:
+                        title_text = re.sub(r'<[^>]+>', '', t_m.group(0)).strip()
+                        if "internship" not in title_text.lower():
+                            title = f"{title_text} Intern"
+                        else:
+                            title = title_text
+                        
+                        href_m = re.search(r'href=[\"\']([^\"\']+)[\"\']', t_m.group(0))
+                        clean_href = href_m.group(1).split('?')[0] if href_m else ""
+                        if not clean_href:
+                            continue
+                        
+                        full_url = "https://internshala.com" + clean_href
+                        company = c_m.group(1).strip() if c_m else "Internshala Partner Company"
+                        loc = loc_m.group(1).strip() if loc_m else default_loc
+
+                        # Unique ID from Internshala URL ending
+                        num_id = re.sub(r'[^0-9]', '', clean_href)[-10:] or abs(hash(full_url))
+                        job_id = f"internshala_{num_id}"
+
+                        desc = f"Internshala Internship: {title} at {company}. Location: {loc}. Online WFH student internship. Apply directly: {full_url}"
+
+                        jobs.append({
+                            "job_id": job_id,
+                            "platform": "Internshala",
+                            "title": title,
+                            "company": company,
+                            "location": loc,
+                            "url": full_url,
+                            "description": desc
+                        })
+        except Exception as e:
+            print(f"[Internshala Scraper] Notice for {slug}: {e}")
+
+    return jobs
+
 def search_all_portals() -> List[Dict]:
     results = []
-    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn)...")
+    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala)...")
     results.extend(search_remoteok_jobs())
     results.extend(search_arbeitnow_jobs())
     results.extend(search_remotive_jobs())
     results.extend(search_jobicy_jobs())
     results.extend(search_linkedin_jobs())
+    results.extend(search_internshala_internships())
 
     # Deduplicate
     seen = set()

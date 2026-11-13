@@ -109,5 +109,16 @@ class TestJobBot(unittest.TestCase):
         self.assertGreaterEqual(len(py_mod["sections"]), 2)
         print("\n[Test Prep Assistant] Verified study guides for QA, Python Coding, and AI/ML.")
 
+    def test_internshala_matching(self):
+        title = "Artificial Intelligence (AI) Intern"
+        desc = "Internshala Internship: Artificial Intelligence (AI) at TechCorp. Location: Work From Home. Online WFH student internship."
+        company = "Pledge India Foundation"
+        location = "Work From Home / Remote"
+
+        score, reasons = evaluate_job_match(title, desc, company, location)
+        self.assertGreaterEqual(score, 70.0)
+        self.assertIn("TOP PREFERENCE: Online / Remote / WFH", reasons)
+        print(f"\n[Test Internshala Match] Score: {score} | Reasons: {reasons}")
+
 if __name__ == "__main__":
     unittest.main()
