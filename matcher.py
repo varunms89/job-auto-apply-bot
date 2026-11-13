@@ -58,41 +58,45 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
             else:
                 return 0.0, "Rejected: Role is not QA, AI/Programming internship, or technical support role"
 
-    # 3. Location / Work Mode Matching
-    wfh_terms = ["remote", "work from home", "wfh", "anywhere", "telecommute", "home-based", "virtual", "worldwide"]
+    # 3. Location / Work Mode Matching (High priority to Online / Remote / WFH)
+    online_terms = ["remote", "work from home", "wfh", "online", "virtual", "telecommute", "home-based", "anywhere", "worldwide"]
     india_loc_terms = ["bangalore", "bengaluru", "karnataka", "india", "hassan", "hyderabad", "chennai", "pune"]
 
-    is_remote = any(wfh in full_text for wfh in wfh_terms)
+    is_online_remote = any(term in full_text for term in online_terms)
     is_local_india = any(loc in full_text for loc in india_loc_terms)
 
-    if not (is_remote or is_local_india):
-        return 0.0, "Rejected: Location is neither Remote/WFH nor Bangalore/Karnataka/India"
+    if not (is_online_remote or is_local_india):
+        return 0.0, "Rejected: Location is neither Online/Remote/WFH nor Bangalore/Karnataka/India"
 
-    # 4. Score Calculation
+    # 4. Score Calculation (Strong preference to Online / WFH)
     score = 40.0
     reasons = []
 
     if is_primary_qa:
-        score += 25.0
+        score += 20.0
         reasons.append("🎯 Direct Software Tester / QA role")
     elif is_ai_or_coding:
-        score += 25.0
+        score += 20.0
         reasons.append("🤖 AI & Programming Internship role")
     else:
-        score += 15.0
+        score += 10.0
         reasons.append("🛠️ Allied Tech Support / Trainee role")
 
-    if is_remote:
-        score += 15.0
-        reasons.append("🏠 Work From Home (Remote)")
-    if is_local_india:
+    # TOP PREFERENCE BOOST: Online / Virtual / Remote / WFH
+    if is_online_remote:
+        score += 30.0  # +30 points top preference boost
+        reasons.append("⭐️ TOP PREFERENCE: Online / Remote / WFH Internship/Job")
+    elif is_local_india:
         score += 10.0
-        reasons.append("📍 Bangalore / Karnataka / India location")
+        reasons.append("📍 Local Bangalore / Karnataka / India location")
 
-    # Fresher / Entry-level boost
-    if any(k in full_text for k in ["fresher", "intern", "trainee", "entry level", "junior", "graduate", "0-1", "0-2"]):
+    # Internship / Fresher boost
+    if "intern" in title_lower or "internship" in title_lower:
+        score += 15.0
+        reasons.append("🎓 Preferred Internship opportunity")
+    elif any(k in full_text for k in ["fresher", "trainee", "entry level", "junior", "graduate", "0-1", "0-2"]):
         score += 10.0
-        reasons.append("Matches entry-level / intern / fresher")
+        reasons.append("Matches entry-level / fresher")
 
     # Skills matching
     skills_hit = [s for s in ["manual testing", "test cases", "jira", "postman", "bug", "python", "sql", "troubleshooting", "customer support"] if s in full_text]

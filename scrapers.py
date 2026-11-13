@@ -144,15 +144,18 @@ def search_linkedin_jobs() -> List[Dict]:
     """
     jobs = []
     queries = [
-        ("Software%20Tester", "Bengaluru"),
-        ("QA%20Engineer", "Bengaluru"),
-        ("Software%20Tester", "India"),
-        ("QA%20Intern", "India"),
-        ("AI%20Intern", "Bengaluru"),
+        # Remote / Online Focused Queries (f_WT=2 is LinkedIn filter for Remote/Work From Home)
+        ("Software%20Tester", "Remote"),
+        ("QA%20Intern", "Remote"),
+        ("AI%20Intern", "Remote"),
+        ("Machine%20Learning%20Intern", "Remote"),
+        ("Python%20Intern", "Remote"),
+        ("Software%20Developer%20Intern", "Remote"),
+        # Regional Tech Hub Queries
         ("AI%20Intern", "India"),
-        ("Python%20Intern", "Bengaluru"),
-        ("Machine%20Learning%20Intern", "India"),
-        ("Software%20Developer%20Intern", "Bengaluru")
+        ("QA%20Intern", "Bengaluru"),
+        ("Software%20Tester", "Bengaluru"),
+        ("Machine%20Learning%20Intern", "Bengaluru")
     ]
     
     linkedin_cookie = os.environ.get("LINKEDIN_LI_AT", "")

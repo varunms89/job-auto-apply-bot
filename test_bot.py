@@ -13,7 +13,7 @@ class TestJobBot(unittest.TestCase):
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertGreaterEqual(score, 50.0)
         self.assertIn("Software Tester", reasons)
-        self.assertIn("Work From Home", reasons)
+        self.assertIn("TOP PREFERENCE: Online / Remote / WFH", reasons)
         print(f"\n[Test Match 1 - WFH Tester] Score: {score} | Reasons: {reasons}")
 
     def test_onsite_rejection(self):
@@ -24,7 +24,7 @@ class TestJobBot(unittest.TestCase):
 
         score, reasons = evaluate_job_match(title, desc, company, location)
         self.assertEqual(score, 0.0)
-        self.assertIn("neither Remote/WFH nor Bangalore/Karnataka/India", reasons)
+        self.assertIn("neither Online/Remote/WFH nor Bangalore/Karnataka/India", reasons)
         print(f"[Test Match On-Site Rejection] Score: {score} | Filtered: {reasons}")
 
     def test_bangalore_qa_matching(self):
