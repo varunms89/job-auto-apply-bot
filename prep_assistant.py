@@ -368,3 +368,31 @@ QA_PRACTICE_QUESTIONS = [
         "explanation": "Smoke Testing (Build Verification Testing) quickly validates that the core basic functionality works before initiating comprehensive testing."
     }
 ]
+
+HR_SCREENING_QUESTIONS = [
+    {
+        "question": "1. Tell me about yourself and your background.",
+        "intent": "Recruiters want a concise, structured 60-second summary of your degree, technical focus, projects, and goals.",
+        "script": "Hi, my name is Varun M S. I am currently in my final year of Bachelor of Computer Applications (BCA) at Government Science College, Hassan, graduating in May 2025. Throughout my academics, I have specialized in software quality assurance, test case authoring, boundary value analysis, API testing using Postman, and Python scripting. I have built practical projects including an e-commerce QA test suite with 50+ test cases and an AI resume screening tool published on my GitHub. I am passionate about finding defects early and delivering reliable software, and I am actively seeking an entry-level Software Tester / QA role or AI/Python internship where I can contribute to your sprint cycles."
+    },
+    {
+        "question": "2. Why are you interested in Software Testing & QA?",
+        "intent": "Shows whether you chose testing deliberately or just by chance.",
+        "script": "I enjoy the analytical mindset required in QA. It's not just about finding what works, but actively thinking like an end-user to uncover where edge cases and workflows break before customers see them. Working with Postman for API validation, designing boundary test cases, and tracking bugs through their lifecycle gives me great satisfaction because QA directly protects the company's reputation and product reliability."
+    },
+    {
+        "question": "3. What is your graduation year, college, and when can you join?",
+        "intent": "Confirms graduation timeline and immediate availability for work/internship.",
+        "script": "I am graduating in May 2025 from Government Science College (GSC), Hassan, Karnataka. My academic schedule allows for immediate joining for full-time or part-time internships (both Remote/WFH or Bangalore hybrid), and I will transition seamlessly to full-time employment post-graduation."
+    },
+    {
+        "question": "4. What are your salary / stipend expectations?",
+        "intent": "Assesses budget alignment without sounding inflexible.",
+        "script": "As a fresher entering the industry, my primary priority is joining a strong engineering team where I can contribute hands-on testing, learn production best practices, and deliver immediate value. I am comfortable with standard industry stipend bands for interns (e.g., ₹15,000 to ₹35,000/month) or entry-level packages (3 to 5 LPA) and am happy to follow your company's established compensation structure."
+    },
+    {
+        "question": "5. Do you have any questions for us?",
+        "intent": "Demonstrates genuine curiosity, initiative, and engagement with the team.",
+        "script": "Yes, thank you! I'd love to ask: 1) What does a typical day look like for a QA intern or junior tester on your team? 2) Which defect tracking and automation tools does your team use during sprint releases? 3) What are the key qualities of someone who exceeds expectations in this role over their first 90 days?"
+    }
+]

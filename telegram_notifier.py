@@ -87,7 +87,7 @@ def generate_live_report() -> str:
         report += (
             f"\n{idx}. <b>{title}</b>\n"
             f"   🏢 {comp} | ⭐️ Score: <code>{score}/100</code>\n"
-            f"   🔗 <a href='{url}'>View Job Posting</a>\n"
+            f"   👉 <a href='{url}'><b>TAP TO VIEW & APPLY ↗</b></a>\n"
         )
 
     report += (
@@ -115,7 +115,7 @@ def send_assessment_alert(company: str, role_title: str, platform: str, test_url
         alert += f"📝 <b>Note:</b> {instructions}\n"
 
     alert += (
-        f"\n🔗 <a href='{test_url}'>👉 CLICK HERE TO TAKE TEST / JOIN</a>\n"
+        f"\n🚀 <a href='{test_url}'><b>👉 TAP TO START ASSESSMENT / JOIN ↗</b></a>\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"💡 <i>Tip: Check the Preparation Hub on your Dashboard for QA & Python cheat sheets before starting!</i>"
     )

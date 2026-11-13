@@ -47,6 +47,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cursor.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS starred BOOLEAN DEFAULT FALSE;")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS govt_notifications (
                 id SERIAL PRIMARY KEY,
@@ -105,6 +106,10 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cursor.execute("PRAGMA table_info(jobs);")
+        cols = [col[1] for col in cursor.fetchall()]
+        if "starred" not in cols:
+            cursor.execute("ALTER TABLE jobs ADD COLUMN starred INTEGER DEFAULT 0;")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS govt_notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,6 +218,33 @@ def update_job_status(identifier: Any, new_status: str):
         cursor.execute(f"UPDATE jobs SET status = {ph} WHERE job_id = {ph}", (new_status, str(identifier)))
     conn.commit()
     conn.close()
+
+def toggle_job_star(identifier: Any) -> bool:
+    """
+    Toggles the favorite/star status of an application and returns the new boolean state.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    ph = "%s" if DATABASE_URL else "?"
+    
+    if str(identifier).isdigit():
+        cursor.execute(f"SELECT starred FROM jobs WHERE id = {ph} OR job_id = {ph}", (int(identifier), str(identifier)))
+    else:
+        cursor.execute(f"SELECT starred FROM jobs WHERE job_id = {ph}", (str(identifier),))
+    row = cursor.fetchone()
+    
+    current = bool(row[0]) if row and row[0] else False
+    new_state = not current
+    db_val = new_state if DATABASE_URL else (1 if new_state else 0)
+    
+    if str(identifier).isdigit():
+        cursor.execute(f"UPDATE jobs SET starred = {ph} WHERE id = {ph} OR job_id = {ph}", (db_val, int(identifier), str(identifier)))
+    else:
+        cursor.execute(f"UPDATE jobs SET starred = {ph} WHERE job_id = {ph}", (db_val, str(identifier)))
+        
+    conn.commit()
+    conn.close()
+    return new_state
 
 def get_job_stats() -> Dict[str, int]:
     conn = get_connection()

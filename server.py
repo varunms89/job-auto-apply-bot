@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from database import get_connection, get_job_stats, record_assessment, get_assessments, update_assessment_status
 from live_bot import run_continuous_live_bot
-from prep_assistant import PREP_MODULES, QA_PRACTICE_QUESTIONS
+from prep_assistant import PREP_MODULES, QA_PRACTICE_QUESTIONS, HR_SCREENING_QUESTIONS
 from email_monitor import process_email_message
 from telegram_notifier import send_assessment_alert
 
@@ -95,6 +95,27 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
                 return
 
+        elif parsed_path.path == "/api/jobs/star":
+            try:
+                from database import toggle_job_star
+                if self.headers.get('Content-Type') == 'application/json':
+                    data = json.loads(post_data)
+                else:
+                    data = {k: v[0] for k, v in parse_qs(post_data).items()}
+                job_id = data.get("id") or data.get("job_id")
+                new_state = toggle_job_star(job_id) if job_id else False
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "starred": new_state}).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+                return
+
         self.send_response(404)
         self.end_headers()
 
@@ -170,6 +191,20 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
         qa_sections = "".join([f"<div class='prep-card'><h3>{s['heading']}</h3><div>{s['content']}</div></div>" for s in PREP_MODULES["qa"]["sections"]])
         py_sections = "".join([f"<div class='prep-card'><h3>{s['heading']}</h3><div>{s['content']}</div></div>" for s in PREP_MODULES["python"]["sections"]])
         ai_sections = "".join([f"<div class='prep-card'><h3>{s['heading']}</h3><div>{s['content']}</div></div>" for s in PREP_MODULES["ai"]["sections"]])
+
+        hr_cards = []
+        for h in HR_SCREENING_QUESTIONS:
+            hr_cards.append(f"""
+            <div class='prep-card' style='border-left-color:#0284c7;'>
+                <h3 style='color:#0369a1;'>{h['question']}</h3>
+                <div style='color:#64748b; font-size:0.85rem; margin-bottom:8px;'><b>Recruiter Intent:</b> {h['intent']}</div>
+                <div style='background:#f8fafc; padding:12px; border-radius:6px; border-left:3px solid #0284c7; line-height:1.5;'>
+                    <b>🗣️ What You Say:</b><br>
+                    \"{h['script']}\"
+                </div>
+            </div>
+            """)
+        hr_sections = "".join(hr_cards)
 
         quiz_cards = []
         for q in QA_PRACTICE_QUESTIONS:
@@ -263,6 +298,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <button class="tab-btn" id="btn-py" onclick="switchTab('py')">🐍 Python & Coding Assessment</button>
                     <button class="tab-btn" id="btn-ai" onclick="switchTab('ai')">🤖 AI & Machine Learning</button>
                     <button class="tab-btn" id="btn-quiz" onclick="switchTab('quiz')">📝 Interactive QA Quiz (10 Qs)</button>
+                    <button class="tab-btn" id="btn-hr" onclick="switchTab('hr')">💼 HR Phone Screening Script</button>
                 </div>
 
                 <!-- QA Tab -->
@@ -292,11 +328,15 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                         <button onclick="checkQuiz()" style="background:#2563eb; color:white; border:none; padding:12px 28px; border-radius:8px; font-size:1rem; font-weight:bold; cursor:pointer;">✅ Check Score & Explanations</button>
                     </div>
                 </div>
+
+                <!-- HR Tab -->
+                <div class="tab-content" id="tab-hr">
+                    <p style="color: #475569; margin-bottom: 15px;">Model answers and recruiter talking points for initial 5-minute phone and video screening calls:</p>
+                    {hr_sections}
+                </div>
             </div>
         </body>
         </html>
-        """
-        self.wfile.write(html.encode("utf-8"))
         """
         self.wfile.write(html.encode("utf-8"))
 
@@ -309,12 +349,12 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             conn = get_connection()
             cur = conn.cursor()
             
-            # 1. Submitted Jobs (including all pipeline stages)
+            # 1. Submitted Jobs (including all pipeline stages, starred first)
             cur.execute("""
-                SELECT id, title, company, platform, location, match_score, status, url 
+                SELECT id, title, company, platform, location, match_score, status, url, starred 
                 FROM jobs 
                 WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
-                ORDER BY id DESC
+                ORDER BY starred DESC, id DESC
             """)
             submitted_jobs = cur.fetchall()
 
@@ -344,6 +384,53 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
         pending_tests = [a for a in assessments if a["status"] == "PENDING"]
         completed_tests = [a for a in assessments if a["status"] == "COMPLETED"]
         active_interviews = len([r for r in submitted_jobs if r[6] in ('INTERVIEWING', 'OFFERED')])
+
+        # Build Pending Tests Table Rows
+        test_rows = []
+        for a in pending_tests:
+            test_rows.append(f"<tr><td><b>{a['company']}</b></td><td>{a['role_title']}</td><td><span class='badge-platform'>{a['platform']}</span></td><td><b>{a['deadline_or_time']}</b></td><td><code>{a['prep_topic']}</code></td><td><a href='{a['test_url']}' target='_blank' class='btn-take'>Start Test / Join ↗</a></td><td><form method='POST' action='/api/assessments/complete' style='display:inline;'><input type='hidden' name='id' value='{a['id']}'><button type='submit' class='btn-complete'>Mark Done ✓</button></form></td></tr>")
+        tests_rows_html = "".join(test_rows) if test_rows else "<tr><td colspan='7' style='text-align:center; color:#64748b; padding:15px;'>No pending test invites right now. Auto-detected email invites or manual additions will appear here instantly!</td></tr>"
+
+        # Build Submitted Jobs Table Rows
+        submitted_rows = []
+        for idx, r in enumerate(submitted_jobs, 1):
+            jid, title, comp, plat, loc, score, status, url, starred = r
+            comp_clean = str(comp).replace('"', '').replace("'", "")
+            title_clean = str(title).replace('"', '').replace("'", "")
+            star_icon = "⭐" if starred else "☆"
+            sub_sel = "selected" if status in ('SUBMITTED', 'APPLIED', 'APPLIED_READY') else ""
+            tg_sel = "selected" if status == 'TEST_GIVEN' else ""
+            int_sel = "selected" if status == 'INTERVIEWING' else ""
+            off_sel = "selected" if status == 'OFFERED' else ""
+            rej_sel = "selected" if status == 'REJECTED' else ""
+            submitted_rows.append(f"""
+                <tr>
+                    <td style='text-align:center;'><button onclick='toggleStar({jid}, this)' style='background:none; border:none; cursor:pointer; font-size:1.15rem; padding:0;' title='Pin to Top as Dream Company'>{star_icon}</button></td>
+                    <td>{idx}</td>
+                    <td><b>{title}</b></td>
+                    <td>{comp}</td>
+                    <td>{plat}</td>
+                    <td><b>{score}/100</b></td>
+                    <td>
+                        <select class='status-select' onchange='changeJobStatus({jid}, this.value)'>
+                            <option value='SUBMITTED' {sub_sel}>SUBMITTED</option>
+                            <option value='TEST_GIVEN' {tg_sel}>TEST GIVEN</option>
+                            <option value='INTERVIEWING' {int_sel}>INTERVIEWING</option>
+                            <option value='OFFERED' {off_sel}>OFFERED</option>
+                            <option value='REJECTED' {rej_sel}>REJECTED</option>
+                        </select>
+                    </td>
+                    <td><a href='{url}' target='_blank'>View Job ↗</a></td>
+                    <td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach("{comp_clean}", "{title_clean}")'>✉️ Outreach</button></td>
+                </tr>
+            """)
+        submitted_rows_html = "".join(submitted_rows) if submitted_rows else "<tr><td colspan='9'>No jobs submitted yet.</td></tr>"
+
+        # Build Not Submitted Jobs Table Rows
+        unsub_rows = []
+        for idx, r in enumerate(not_submitted_jobs, 1):
+            unsub_rows.append(f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><span class='badge-unsub'>{r[6]}</span></td><td><a href='{r[7]}' target='_blank'>View ↗</a></td></tr>")
+        unsub_rows_html = "".join(unsub_rows) if unsub_rows else "<tr><td colspan='6'>No unsubmitted jobs.</td></tr>"
 
         html = f"""
         <!DOCTYPE html>
@@ -444,7 +531,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                             </tr>
                         </thead>
                         <tbody>
-                            {''.join([f"<tr><td><b>{a['company']}</b></td><td>{a['role_title']}</td><td><span class='badge-platform'>{a['platform']}</span></td><td><b>{a['deadline_or_time']}</b></td><td><code>{a['prep_topic']}</code></td><td><a href='{a['test_url']}' target='_blank' class='btn-take'>Start Test / Join ↗</a></td><td><form method='POST' action='/api/assessments/complete' style='display:inline;'><input type='hidden' name='id' value='{a['id']}'><button type='submit' class='btn-complete'>Mark Done ✓</button></form></td></tr>" for a in pending_tests]) if pending_tests else "<tr><td colspan='7' style='text-align:center; color:#64748b; padding:15px;'>No pending test invites right now. Auto-detected email invites or manual additions will appear here instantly!</td></tr>"}
+                            {tests_rows_html}
                         </tbody>
                     </table>
 
@@ -498,14 +585,10 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
                     <table id="submittedTable">
                         <thead>
-                            <tr><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Match Score</th><th>Pipeline Status</th><th>Link</th><th>Outreach</th></tr>
+                            <tr><th style="width:30px;">⭐</th><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Match Score</th><th>Pipeline Status</th><th>Link</th><th>Outreach</th></tr>
                         </thead>
                         <tbody>
-                            {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><b>{r[5]}/100</b></td><td><select class='status-select' onchange='changeJobStatus({r[0]}, this.value)'><option value='SUBMITTED' {'selected' if r[6] in ('SUBMITTED','APPLIED','APPLIED_READY') else ''}>SUBMITTED</option><option value='TEST_GIVEN' {'selected' if r[6]=='TEST_GIVEN' else ''}>TEST GIVEN</option><option value='INTERVIEWING' {'selected' if r[6]=='INTERVIEWING' else ''}>INTERVIEWING</option><option value='OFFERED' {'selected' if r[6]=='OFFERED' else ''}>OFFERED</option><option value='REJECTED' {'selected' if r[6]=='REJECTED' else ''}>REJECTED</option></select></td><td><a href='{r[7]}' target='_blank'>View Job ↗</a></td><td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach(\\\"{r[2].replace(chr(34), \"\").replace(chr(39), \"\")}\\\", \\\"{r[1].replace(chr(34), \"\").replace(chr(39), \"\")}\\\")'>✉️ Outreach</button></td></tr>" for idx, r in enumerate(submitted_jobs, 1)]) if submitted_jobs else "<tr><td colspan='8'>No jobs submitted yet.</td></tr>"}
-                        </tbody>
-                    </table>
-                </div>
-                            {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><b>{r[5]}/100</b></td><td><span class='badge-success'>{r[6]}</span></td><td><a href='{r[7]}' target='_blank'>View Job ↗</a></td><td><button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach(\\\"{r[2].replace(chr(34), \"\").replace(chr(39), \"\")}\\\", \\\"{r[1].replace(chr(34), \"\").replace(chr(39), \"\")}\\\")'>✉️ Outreach</button></td></tr>" for idx, r in enumerate(submitted_jobs, 1)]) if submitted_jobs else "<tr><td colspan='8'>No jobs submitted yet.</td></tr>"}
+                            {submitted_rows_html}
                         </tbody>
                     </table>
                 </div>
@@ -519,7 +602,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                             <tr><th>#</th><th>Job Title</th><th>Company</th><th>Platform</th><th>Filter Reason</th><th>Link</th></tr>
                         </thead>
                         <tbody>
-                            {''.join([f"<tr><td>{idx}</td><td><b>{r[1]}</b></td><td>{r[2]}</td><td>{r[3]}</td><td><span class='badge-unsub'>{r[6]}</span></td><td><a href='{r[7]}' target='_blank'>View ↗</a></td></tr>" for idx, r in enumerate(not_submitted_jobs, 1)]) if not_submitted_jobs else "<tr><td colspan='6'>No unsubmitted jobs.</td></tr>"}
+                            {unsub_rows_html}
                         </tbody>
                     </table>
                 </div>
@@ -542,7 +625,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             </div>
 
             <script>
-                function openOutreach(company, role) {
+                function openOutreach(company, role) {{
                     var text = "Hi [Hiring Manager / Recruiter],\\n\\n" +
                                "I came across the " + role + " opportunity at " + company + " and wanted to reach out directly. " +
                                "As a final-year BCA student (Government Science College, Hassan - Graduating 2025) with practical projects in " +
@@ -554,40 +637,52 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     document.getElementById('modalTitle').innerText = "✉️ Outreach for " + company;
                     document.getElementById('copyBtn').innerText = "📋 Copy to Clipboard";
                     document.getElementById('outreachModal').style.display = "flex";
-                }
-                function closeOutreach() {
+                }}
+                function closeOutreach() {{
                     document.getElementById('outreachModal').style.display = "none";
-                }
-                function copyOutreach() {
+                }}
+                function copyOutreach() {{
                     var copyText = document.getElementById("outreachText");
                     copyText.select();
                     document.execCommand("copy");
                     document.getElementById('copyBtn').innerText = "✅ Copied to Clipboard!";
-                }
+                }}
 
-                function changeJobStatus(jobId, newStatus) {
-                    fetch('/api/jobs/update-status', {
+                function changeJobStatus(jobId, newStatus) {{
+                    fetch('/api/jobs/update-status', {{
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: jobId, status: newStatus })
-                    }).then(res => res.json()).then(data => {
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ id: jobId, status: newStatus }})
+                    }}).then(res => res.json()).then(data => {{
                         console.log('Status updated to', newStatus);
-                    }).catch(err => console.error(err));
-                }
+                    }}).catch(err => console.error(err));
+                }}
 
-                function filterSubmittedJobs() {
+                function toggleStar(jobId, btn) {{
+                    fetch('/api/jobs/star', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ id: jobId }})
+                    }}).then(res => res.json()).then(data => {{
+                        if (data.status === 'success') {{
+                            btn.innerText = data.starred ? '⭐' : '☆';
+                        }}
+                    }}).catch(err => console.error(err));
+                }}
+
+                function filterSubmittedJobs() {{
                     let searchVal = document.getElementById('jobSearch').value.toLowerCase();
                     let platformVal = document.getElementById('platformFilter').value.toLowerCase();
                     let statusVal = document.getElementById('statusFilter').value.toLowerCase();
                     let rows = document.querySelectorAll('#submittedTable tbody tr');
-                    rows.forEach(row => {
+                    rows.forEach(row => {{
                         let text = row.innerText.toLowerCase();
                         let matchSearch = !searchVal || text.includes(searchVal);
                         let matchPlatform = !platformVal || text.includes(platformVal);
                         let matchStatus = !statusVal || text.includes(statusVal);
                         row.style.display = (matchSearch && matchPlatform && matchStatus) ? '' : 'none';
-                    });
-                }
+                    }});
+                }}
             </script>
         </body>
         </html>

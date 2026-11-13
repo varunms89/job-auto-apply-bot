@@ -120,5 +120,18 @@ class TestJobBot(unittest.TestCase):
         self.assertIn("TOP PREFERENCE: Online / Remote / WFH", reasons)
         print(f"\n[Test Internshala Match] Score: {score} | Reasons: {reasons}")
 
+    def test_hr_screening_and_starring(self):
+        from prep_assistant import HR_SCREENING_QUESTIONS
+        from database import toggle_job_star
+        self.assertGreaterEqual(len(HR_SCREENING_QUESTIONS), 4)
+        self.assertIn("Varun M S", HR_SCREENING_QUESTIONS[0]["script"])
+        self.assertIn("Government Science College", HR_SCREENING_QUESTIONS[0]["script"])
+
+        # Toggle star test
+        st1 = toggle_job_star(1)
+        st2 = toggle_job_star(1)
+        self.assertNotEqual(st1, st2)
+        print("\n[Test HR Screening & Starring] Verified HR script and star toggle database operations.")
+
 if __name__ == "__main__":
     unittest.main()
