@@ -133,5 +133,18 @@ class TestJobBot(unittest.TestCase):
         self.assertNotEqual(st1, st2)
         print("\n[Test HR Screening & Starring] Verified HR script and star toggle database operations.")
 
+    def test_ai_test_case_generator(self):
+        from prep_assistant import generate_test_cases
+        coupon_cases = generate_test_cases("Coupon discount")
+        upi_cases = generate_test_cases("UPI Payment")
+        generic_cases = generate_test_cases("Flight seat selection")
+
+        self.assertGreaterEqual(len(coupon_cases), 5)
+        self.assertGreaterEqual(len(upi_cases), 5)
+        self.assertGreaterEqual(len(generic_cases), 5)
+        self.assertIn("TC_CPN_", coupon_cases[0]["id"])
+        self.assertIn("TC_PAY_", upi_cases[0]["id"])
+        print("\n[Test AI Test Case Generator] Verified rule-based IEEE test case authoring for QA.")
+
 if __name__ == "__main__":
     unittest.main()

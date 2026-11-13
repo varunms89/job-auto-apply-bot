@@ -17,7 +17,7 @@ DEFAULT_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "📊 Application Status"}, {"text": "🚨 Upcoming Tests"}],
         [{"text": "🎯 Mock Interview"}, {"text": "💼 HR Screening Script"}],
-        [{"text": "📝 QA Practice Quiz"}, {"text": "📄 Live ATS Resume"}]
+        [{"text": "📝 QA Practice Quiz"}, {"text": "🌙 Evening Wrap-Up"}]
     ],
     "resize_keyboard": True,
     "is_persistent": True
@@ -188,6 +188,68 @@ def send_morning_briefing() -> bool:
     )
 
     return send_telegram_message(briefing)
+
+EVENING_PRO_TIPS = [
+    {
+        "topic": "Answering 'Tell Me About a Difficult Bug You Found'",
+        "tip": "Use the STAR framework (Situation, Task, Action, Result). State how you reproduced an edge case (e.g. cart rounding or race condition), captured network logs via DevTools, and verified the fix post-patch."
+    },
+    {
+        "topic": "What to Say When You Don't Know an Answer",
+        "tip": "Never guess or freeze. Say: 'I haven't encountered this specific scenario in my projects yet, but based on my understanding of X, here is how I would isolate and test it...' This demonstrates your analytical problem-solving process."
+    },
+    {
+        "topic": "Explaining API Testing in Interview Screenings",
+        "tip": "Explain that API testing catches backend bugs earlier than UI testing. Mention validating status codes (200, 201, 400, 401), response latency SLAs (<500ms), and payload schema integrity."
+    },
+    {
+        "topic": "Handling 'Why Should We Hire a Fresher?'",
+        "tip": "Emphasize your immediate availability (May 2025 BCA), proactive hands-on projects (50+ test cases, Postman, Playwright automation), and high enthusiasm to absorb team testing standards."
+    }
+]
+
+def send_evening_wrapup() -> bool:
+    """
+    Sends the 8:00 PM daily job wrap-up + Interview Pro-Tip of the Night to Telegram.
+    """
+    from datetime import datetime
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT count(*) FROM jobs")
+    total_scanned = cur.fetchone()[0]
+
+    cur.execute("SELECT count(*) FROM jobs WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED')")
+    total_applied = cur.fetchone()[0]
+
+    try:
+        cur.execute("SELECT count(*) FROM assessments WHERE status = 'PENDING'")
+        pending_tests = cur.fetchone()[0]
+    except Exception:
+        pending_tests = 0
+    conn.close()
+
+    tip_idx = datetime.now().day % len(EVENING_PRO_TIPS)
+    t = EVENING_PRO_TIPS[tip_idx]
+
+    wrapup = (
+        f"🌙 <b>DAILY EVENING JOB WRAP-UP</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📅 <b>Date:</b> {datetime.now().strftime('%A, %d %B %Y')}\n"
+        f"👤 <b>Candidate:</b> {USER_CONFIG.name} (BCA Final Year 2025)\n\n"
+        f"📊 <b>Today's Pipeline Summary:</b>\n"
+        f"• Total Applications Submitted: <b>{total_applied}</b>\n"
+        f"• Total Listings Evaluated: <b>{total_scanned}</b>\n"
+        f"• Active Assessment Invites: <b>{pending_tests}</b>\n\n"
+        f"💡 <b>INTERVIEW PRO-TIP OF THE NIGHT:</b>\n"
+        f"🎯 <b>Topic:</b> {t['topic']}\n"
+        f"🗣️ <i>\"{t['tip']}\"</i>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📱 <i>Tap <b>🎯 Mock Interview</b> anytime to practice 3 quick questions before sleeping!</i>\n"
+        f"🔗 <a href='https://job-auto-apply-bot.onrender.com'>Live Dashboard</a> | <a href='https://job-auto-apply-bot.onrender.com/prep'>Prep Hub</a>"
+    )
+
+    return send_telegram_message(wrapup)
 
 def dispatch_report():
     report_text = generate_live_report()

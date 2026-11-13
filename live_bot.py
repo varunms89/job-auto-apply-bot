@@ -27,6 +27,7 @@ def run_continuous_live_bot():
 
     cycle_number = 1
     last_briefing_date = None
+    last_wrapup_date = None
     while True:
         try:
             now = datetime.now()
@@ -39,6 +40,16 @@ def run_continuous_live_bot():
                     print("🌅 [Morning Briefing] Sent daily 9:00 AM briefing to Telegram!")
                 except Exception as br_err:
                     print(f"⚠️ [Briefing Notice] {br_err}")
+
+            # Daily Evening Wrap-Up at 8:00 PM (20:00)
+            if now.hour == 20 and last_wrapup_date != now.date():
+                try:
+                    from telegram_notifier import send_evening_wrapup
+                    send_evening_wrapup()
+                    last_wrapup_date = now.date()
+                    print("🌙 [Evening Wrap-Up] Sent daily 8:00 PM wrap-up to Telegram!")
+                except Exception as wr_err:
+                    print(f"⚠️ [Wrap-Up Notice] {wr_err}")
 
             print(f"\n🔄 [Cycle #{cycle_number}] Executing live job scan at {now.strftime('%Y-%m-%d %H:%M:%S')}...")
             run_job_bot_cycle(auto_apply=True)

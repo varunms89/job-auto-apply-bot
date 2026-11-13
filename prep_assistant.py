@@ -396,3 +396,248 @@ HR_SCREENING_QUESTIONS = [
         "script": "Yes, thank you! I'd love to ask: 1) What does a typical day look like for a QA intern or junior tester on your team? 2) Which defect tracking and automation tools does your team use during sprint releases? 3) What are the key qualities of someone who exceeds expectations in this role over their first 90 days?"
     }
 ]
+
+def generate_test_cases(feature: str) -> List[Dict[str, str]]:
+    """
+    Intelligently generates an IEEE-standard test case suite for any given feature or scenario.
+    Specialized rules for Coupons, Payments, Auth/OTP, Search, and arbitrary features.
+    """
+    f = feature.strip().lower()
+
+    if any(k in f for k in ["coupon", "discount", "promo", "voucher"]):
+        return [
+            {
+                "id": "TC_CPN_001",
+                "scenario": "Verify valid coupon code applies correct discount percentage",
+                "type": "Positive / Functional",
+                "preconditions": "Cart total meets minimum order criteria ($50)",
+                "steps": "1. Navigate to checkout\n2. Enter valid code 'SAVE20'\n3. Click 'Apply Coupon'",
+                "test_data": "Code: 'SAVE20' (20% off), Cart: $100",
+                "expected": "Discount of $20 subtracted from subtotal; final price updates to $80; success message displayed",
+                "severity": "High"
+            },
+            {
+                "id": "TC_CPN_002",
+                "scenario": "Boundary Value Analysis: Apply coupon on exact minimum order amount",
+                "type": "Boundary Value (Min-1, Min, Min+1)",
+                "preconditions": "Minimum spend coupon configured at $50",
+                "steps": "1. Add items totaling $49.99 (Min-1) -> Click apply\n2. Add item to make $50.00 (Min) -> Click apply\n3. Add item to make $50.01 (Min+1) -> Click apply",
+                "test_data": "Cart totals: $49.99, $50.00, $50.01",
+                "expected": "$49.99 fails with 'Min $50 required'; $50.00 and $50.01 apply successfully",
+                "severity": "High"
+            },
+            {
+                "id": "TC_CPN_003",
+                "scenario": "Negative: Apply expired coupon code",
+                "type": "Negative / Business Logic",
+                "preconditions": "Coupon expiration date has elapsed",
+                "steps": "1. Enter expired code 'EXPIRED2024'\n2. Click 'Apply Coupon'",
+                "test_data": "Code: 'EXPIRED2024'",
+                "expected": "Validation error: 'This coupon code has expired'; cart total remains unchanged",
+                "severity": "Medium"
+            },
+            {
+                "id": "TC_CPN_004",
+                "scenario": "Negative: Re-apply single-use coupon code by the same user account",
+                "type": "Negative / Fraud Prevention",
+                "preconditions": "Coupon is limited to 1 use per customer and already redeemed",
+                "steps": "1. Enter redeemed coupon 'WELCOME10'\n2. Click 'Apply'",
+                "test_data": "Code: 'WELCOME10'",
+                "expected": "Error: 'Coupon code has already been redeemed for this account'",
+                "severity": "High"
+            },
+            {
+                "id": "TC_CPN_005",
+                "scenario": "Security: SQL Injection and XSS payload in coupon input field",
+                "type": "Security / Input Sanitization",
+                "preconditions": "User is on coupon input box",
+                "steps": "1. Enter \"' OR '1'='1\" and \"<script>alert('XSS')</script>\"\n2. Click 'Apply'",
+                "test_data": "Payload: \"<script>alert(1)</script>\"",
+                "expected": "Input sanitized safely; handled as invalid code error without script execution or database error",
+                "severity": "Critical"
+            },
+            {
+                "id": "TC_CPN_006",
+                "scenario": "Concurrency: Rapid double-click on 'Apply Coupon' button",
+                "type": "Concurrency / Edge Case",
+                "preconditions": "Network latency simulated to 500ms",
+                "steps": "1. Enter coupon 'FLAT100'\n2. Double-click apply button rapidly in <100ms",
+                "test_data": "Code: 'FLAT100'",
+                "expected": "Button disabled after first click; discount applied exactly once without duplicate deductions",
+                "severity": "High"
+            }
+        ]
+
+    elif any(k in f for k in ["upi", "payment", "gpay", "phonepe", "paytm", "checkout", "card", "razorpay"]):
+        return [
+            {
+                "id": "TC_PAY_001",
+                "scenario": "Verify successful UPI payment via Valid Virtual Payment Address (VPA)",
+                "type": "Positive / Functional",
+                "preconditions": "User has order in cart with valid shipping address",
+                "steps": "1. Select UPI payment option\n2. Enter valid VPA (e.g. user@okhdfcbank)\n3. Click 'Pay Now'\n4. Approve prompt on mobile banking app",
+                "test_data": "VPA: 'tester@okaxis', Amount: $49.00",
+                "expected": "Payment gateway confirms transaction; webhook triggers order status 'CONFIRMED'; SMS/Email sent",
+                "severity": "Critical"
+            },
+            {
+                "id": "TC_PAY_002",
+                "scenario": "Negative: Invalid UPI ID format validation",
+                "type": "Negative / Input Validation",
+                "preconditions": "User is on UPI checkout step",
+                "steps": "1. Enter VPA without handle (e.g. 'invalidvpa')\n2. Click 'Verify & Pay'",
+                "test_data": "Input: 'invalidvpa', 'test@', '@bank'",
+                "expected": "Inline validation error: 'Please enter a valid UPI ID (e.g. name@bank)'",
+                "severity": "High"
+            },
+            {
+                "id": "TC_PAY_003",
+                "scenario": "Edge Case: Payment timeout / User drops before entering MPIN",
+                "type": "Edge Case / Timeout Handling",
+                "preconditions": "Payment request initiated with 5-minute timeout window",
+                "steps": "1. Request sent to UPI app\n2. User does not respond for 5 minutes",
+                "test_data": "Timeout: 300 seconds",
+                "expected": "App gracefully displays 'Transaction Timed Out'; order reverts to 'PENDING_PAYMENT'; stock not deducted permanently",
+                "severity": "High"
+            },
+            {
+                "id": "TC_PAY_004",
+                "scenario": "Negative: Bank server downtime or insufficient funds response",
+                "type": "Negative / External Gateway Failure",
+                "preconditions": "Mock payment gateway returns error code 402 / Insufficient Funds",
+                "steps": "1. Trigger payment with mock declined card/UPI\n2. Observe response handling",
+                "test_data": "Declined Code: 'ERR_INSUFFICIENT_FUNDS'",
+                "expected": "Clear user message: 'Payment declined by bank due to insufficient funds. Please try another method.'",
+                "severity": "High"
+            },
+            {
+                "id": "TC_PAY_005",
+                "scenario": "Security: Replay attack prevention on payment callback webhook",
+                "type": "Security / Transaction Integrity",
+                "preconditions": "Payment callback received from gateway",
+                "steps": "1. Re-send identical payment callback payload with same transaction ID",
+                "test_data": "TxnId: 'TXN_99882233'",
+                "expected": "Idempotency check detects duplicate callback; returns 200 OK without crediting double orders",
+                "severity": "Critical"
+            }
+        ]
+
+    elif any(k in f for k in ["login", "otp", "auth", "signin", "signup", "password"]):
+        return [
+            {
+                "id": "TC_AUTH_001",
+                "scenario": "Verify valid 6-digit OTP login within expiry window",
+                "type": "Positive / Functional",
+                "preconditions": "Mobile number is registered in user database",
+                "steps": "1. Enter valid 10-digit phone number\n2. Click 'Request OTP'\n3. Enter valid 6-digit OTP received\n4. Click 'Verify'",
+                "test_data": "Phone: '9876543210', OTP: '123456'",
+                "expected": "JWT token issued; user redirected to dashboard; session created",
+                "severity": "Critical"
+            },
+            {
+                "id": "TC_AUTH_002",
+                "scenario": "Negative: Enter incorrect 6-digit OTP",
+                "type": "Negative / Boundary",
+                "preconditions": "OTP has been generated",
+                "steps": "1. Enter wrong OTP '000000'\n2. Click 'Verify'",
+                "test_data": "OTP: '000000'",
+                "expected": "Error message: 'Invalid OTP. 2 attempts remaining'; user remains on verification screen",
+                "severity": "High"
+            },
+            {
+                "id": "TC_AUTH_003",
+                "scenario": "Security & Rate Limiting: Exceed maximum OTP retry attempts (3 max)",
+                "type": "Security / Brute Force Prevention",
+                "preconditions": "OTP attempt counter initialized to 0",
+                "steps": "1. Enter incorrect OTP 3 consecutive times",
+                "test_data": "3 wrong attempts",
+                "expected": "Account temporarily locked for 15 minutes; message: 'Too many failed attempts. Try again in 15 minutes.'",
+                "severity": "Critical"
+            },
+            {
+                "id": "TC_AUTH_004",
+                "scenario": "Edge Case: OTP input after expiry (60 seconds limit)",
+                "type": "Edge Case / Expiration",
+                "preconditions": "OTP timer elapsed > 60 seconds",
+                "steps": "1. Wait 61 seconds\n2. Enter original OTP\n3. Click 'Verify'",
+                "test_data": "Time: 65s",
+                "expected": "Error: 'OTP has expired. Please click Resend OTP'; 'Resend OTP' button enabled",
+                "severity": "Medium"
+            },
+            {
+                "id": "TC_AUTH_005",
+                "scenario": "Boundary Value Analysis: Mobile number length validation",
+                "type": "Boundary Value (9, 10, 11 digits)",
+                "preconditions": "On registration phone number field",
+                "steps": "1. Enter 9 digits -> check error\n2. Enter 10 digits -> check valid\n3. Enter 11 digits -> check blocked",
+                "test_data": "987654321 (9), 9876543210 (10), 98765432101 (11)",
+                "expected": "Field prevents input beyond 10 digits and validates standard country regex",
+                "severity": "High"
+            }
+        ]
+
+    # Default Generic Generator for Any Arbitrary Feature (e.g. Flight booking, Cart, Search, Profile)
+    cap_feature = feature.title()
+    return [
+        {
+            "id": "TC_GEN_001",
+            "scenario": f"Verify standard positive execution of {cap_feature} with valid data",
+            "type": "Positive / Functional",
+            "preconditions": "User is authenticated and system services are operational",
+            "steps": f"1. Navigate to {cap_feature} interface\n2. Enter valid test parameters\n3. Click submit / confirm",
+            "test_data": "Valid standard inputs",
+            "expected": f"{cap_feature} successfully processed; database state updated; confirmation displayed",
+            "severity": "Critical"
+        },
+        {
+            "id": "TC_GEN_002",
+            "scenario": f"Boundary Value Analysis: Minimum and Maximum allowed limits for {cap_feature}",
+            "type": "Boundary Value Analysis",
+            "preconditions": "Field has documented min and max constraints",
+            "steps": "1. Test Lower Boundary (Min-1, Min, Min+1)\n2. Test Upper Boundary (Max-1, Max, Max+1)",
+            "test_data": "Boundary threshold values",
+            "expected": "Values within [Min, Max] succeed; boundary violations reject gracefully with validation errors",
+            "severity": "High"
+        },
+        {
+            "id": "TC_GEN_003",
+            "scenario": f"Negative: Empty required fields and whitespace injection in {cap_feature}",
+            "type": "Negative / Validation",
+            "preconditions": "User is on input form",
+            "steps": "1. Leave mandatory inputs blank\n2. Enter space characters only\n3. Click submit",
+            "test_data": "Empty string \"\", whitespace \"   \"",
+            "expected": "Form submission blocked; fields highlighted in red with 'This field is required'",
+            "severity": "Medium"
+        },
+        {
+            "id": "TC_GEN_004",
+            "scenario": f"Security: Cross-Site Scripting (XSS) and SQL Injection resilience in {cap_feature}",
+            "type": "Security / Vulnerability",
+            "preconditions": "Input fields accept user string values",
+            "steps": "1. Enter <script>alert('XSS')</script> and ' OR '1'='1\n2. Submit and observe output",
+            "test_data": "Payload: \"<svg onload=alert(1)>\"",
+            "expected": "Input is sanitized / HTML encoded; executed safely without executing arbitrary JavaScript",
+            "severity": "Critical"
+        },
+        {
+            "id": "TC_GEN_005",
+            "scenario": f"Performance & Network Degradation: {cap_feature} under Slow 3G / offline interruption",
+            "type": "Network & Resilience",
+            "preconditions": "Chrome DevTools Network throttled to 'Slow 3G'",
+            "steps": f"1. Trigger {cap_feature}\n2. Disconnect network mid-flight\n3. Reconnect network",
+            "test_data": "Throttle: Slow 3G (100ms latency, 400kbps)",
+            "expected": "Loading spinner shown; network timeout triggers friendly 'Network unstable' retry banner without crash",
+            "severity": "High"
+        },
+        {
+            "id": "TC_GEN_006",
+            "scenario": f"Responsive UI: {cap_feature} renders correctly on Mobile (375px) vs Desktop (1440px)",
+            "type": "UI / Cross-Device UX",
+            "preconditions": "Browser viewport adjusted across standard breakpoints",
+            "steps": f"1. View on 375x812 (iPhone)\n2. View on 768x1024 (Tablet)\n3. View on 1440x900 (Desktop)",
+            "test_data": "Viewports: 375px, 768px, 1440px",
+            "expected": "Zero horizontal scroll; tap targets minimum 48x48px; all buttons fully visible and clickable",
+            "severity": "Medium"
+        }
+    ]
+

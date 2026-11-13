@@ -116,6 +116,27 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
                 return
 
+        elif parsed_path.path == "/api/generate-test-cases":
+            try:
+                from prep_assistant import generate_test_cases
+                if self.headers.get('Content-Type') == 'application/json':
+                    data = json.loads(post_data)
+                else:
+                    data = {k: v[0] for k, v in parse_qs(post_data).items()}
+                feature = data.get("feature", "Shopping Cart Discount Coupon")
+                cases = generate_test_cases(feature)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "feature": feature, "test_cases": cases}).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+                return
+
         self.send_response(404)
         self.end_headers()
 
@@ -276,6 +297,59 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     banner.innerHTML = "🎯 Your Score: <b>" + score + " / 10</b> " + (score >= 8 ? "🎉 Excellent! Ready for QA Screening!" : "💡 Keep reviewing the cheat sheet above!");
                     window.scrollTo({{ top: banner.offsetTop - 50, behavior: 'smooth' }});
                 }}
+
+                let currentTestCases = [];
+                function setAndRun(feat) {{
+                    document.getElementById('featureInput').value = feat;
+                    runGenerator();
+                }}
+
+                function runGenerator() {{
+                    let feat = document.getElementById('featureInput').value.trim();
+                    if (!feat) return;
+                    document.getElementById('featLabel').innerText = feat;
+                    fetch('/api/generate-test-cases', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ feature: feat }})
+                    }}).then(res => res.json()).then(data => {{
+                        currentTestCases = data.test_cases || [];
+                        let html = '';
+                        currentTestCases.forEach(tc => {{
+                            let badgeBg = tc.severity === 'Critical' ? '#fee2e2; color:#991b1b;' : (tc.severity === 'High' ? '#ffedd5; color:#9a3412;' : '#dbeafe; color:#1e40af;');
+                            html += `
+                                <tr style="border-bottom:1px solid #e2e8f0;">
+                                    <td style="padding:10px 12px; font-weight:bold; font-family:monospace;">${{tc.id}}</td>
+                                    <td style="padding:10px 12px; font-weight:600; color:#0f172a;">${{tc.scenario}}</td>
+                                    <td style="padding:10px 12px;"><span style="background:#f1f5f9; padding:2px 8px; border-radius:4px; font-size:0.8rem; font-weight:600;">${{tc.type}}</span></td>
+                                    <td style="padding:10px 12px; font-size:0.84rem; white-space:pre-line;">${{tc.steps}}</td>
+                                    <td style="padding:10px 12px; font-size:0.84rem; color:#475569;">${{tc.test_data}}</td>
+                                    <td style="padding:10px 12px; font-size:0.84rem; color:#15803d; font-weight:500;">${{tc.expected}}</td>
+                                    <td style="padding:10px 12px;"><span style="background:${{badgeBg}} padding:3px 8px; border-radius:9999px; font-weight:bold; font-size:0.75rem;">${{tc.severity}}</span></td>
+                                </tr>
+                            `;
+                        }});
+                        document.getElementById('generatorTbody').innerHTML = html;
+                    }}).catch(err => console.error(err));
+                }}
+
+                function copyGeneratedTable() {{
+                    if (!currentTestCases.length) return;
+                    let md = "| Test Case ID | Scenario / Objective | Type | Steps | Test Data | Expected Result | Severity |\\n";
+                    md += "|---|---|---|---|---|---|---|\\n";
+                    currentTestCases.forEach(tc => {{
+                        let stepsClean = tc.steps.replace(/\\n/g, '<br>');
+                        md += `| ${{tc.id}} | ${{tc.scenario}} | ${{tc.type}} | ${{stepsClean}} | ${{tc.test_data}} | ${{tc.expected}} | ${{tc.severity}} |\\n`;
+                    }});
+                    navigator.clipboard.writeText(md).then(() => {{
+                        document.getElementById('copyTableBtn').innerText = '✅ Markdown Table Copied!';
+                        setTimeout(() => {{ document.getElementById('copyTableBtn').innerText = '📋 Copy Table (Markdown)'; }}, 2500);
+                    }});
+                }}
+
+                window.addEventListener('DOMContentLoaded', () => {{
+                    runGenerator();
+                }});
             </script>
         </head>
         <body>
@@ -295,6 +369,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
                 <div class="tabs">
                     <button class="tab-btn active" id="btn-qa" onclick="switchTab('qa')">🧪 Software Testing & QA</button>
+                    <button class="tab-btn" id="btn-generator" onclick="switchTab('generator')">⚡ AI Test Case Generator</button>
                     <button class="tab-btn" id="btn-py" onclick="switchTab('py')">🐍 Python & Coding Assessment</button>
                     <button class="tab-btn" id="btn-ai" onclick="switchTab('ai')">🤖 AI & Machine Learning</button>
                     <button class="tab-btn" id="btn-quiz" onclick="switchTab('quiz')">📝 Interactive QA Quiz (10 Qs)</button>
@@ -305,6 +380,49 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div class="tab-content active" id="tab-qa">
                     <p style="color: #475569; margin-bottom: 15px;">Focus on test case writing, bug life cycle transitions, severity vs priority, and API status codes.</p>
                     {qa_sections}
+                </div>
+
+                <!-- AI Test Case Generator Tab -->
+                <div class="tab-content" id="tab-generator">
+                    <p style="color: #475569; margin-bottom: 15px;">Generate production-grade IEEE 829 test cases with Boundary Value Analysis, Negative testing, and Security assertions for any feature:</p>
+                    <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:20px;">
+                        <label style="font-weight:600; font-size:0.95rem; color:#0f172a; display:block; margin-bottom:8px;">Enter Feature or Scenario to Test:</label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                            <input type="text" id="featureInput" placeholder="e.g., E-Commerce Discount Coupon, UPI Payment, OTP Login..." value="E-Commerce Discount Coupon" style="flex:1; min-width:250px; padding:10px 14px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                            <button onclick="runGenerator()" style="background:#2563eb; color:white; border:none; padding:10px 22px; border-radius:6px; font-weight:600; cursor:pointer;">⚡ Generate Test Cases</button>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:0.85rem; color:#64748b;">
+                            <span>Quick Presets:</span>
+                            <button onclick="setAndRun('Discount Coupon Code')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">🛒 Coupon Code</button>
+                            <button onclick="setAndRun('UPI Payment Gateway (GPay/PhonePe)')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">💳 UPI Payment</button>
+                            <button onclick="setAndRun('User Mobile OTP Login')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">🔐 OTP Login</button>
+                            <button onclick="setAndRun('Product Catalog Search & Filter')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">🔍 Search & Filter</button>
+                        </div>
+                    </div>
+
+                    <div id="generatorContainer" style="display:block;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <h3 id="generatorTitle" style="margin:0; font-size:1.1rem; color:#0f172a;">Generated Test Cases: <span id="featLabel" style="color:#2563eb;">E-Commerce Discount Coupon</span></h3>
+                            <button onclick="copyGeneratedTable()" id="copyTableBtn" style="background:#0f172a; color:white; border:none; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; cursor:pointer;">📋 Copy Table (Markdown)</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06); font-size:0.88rem;">
+                                <thead>
+                                    <tr style="background:#0f172a; color:white; text-align:left;">
+                                        <th style="padding:10px 12px;">ID</th>
+                                        <th style="padding:10px 12px;">Scenario / Objective</th>
+                                        <th style="padding:10px 12px;">Test Type</th>
+                                        <th style="padding:10px 12px;">Test Steps</th>
+                                        <th style="padding:10px 12px;">Test Data</th>
+                                        <th style="padding:10px 12px;">Expected Result</th>
+                                        <th style="padding:10px 12px;">Severity</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="generatorTbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Python Tab -->

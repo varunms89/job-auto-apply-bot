@@ -249,6 +249,10 @@ def handle_command(text: str, chat_id: str):
         from telegram_notifier import send_morning_briefing
         send_morning_briefing()
 
+    elif cmd.startswith("/evening") or "evening" in cmd or "🌙" in text or "wrap-up" in cmd or "wrap up" in cmd:
+        from telegram_notifier import send_evening_wrapup
+        send_evening_wrapup()
+
     elif cmd.startswith("/resume") or "resume" in cmd or "📄" in text:
         msg = (
             "📄 <b>YOUR LIVE ATS RESUME</b>\n"
