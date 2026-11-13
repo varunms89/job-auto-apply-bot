@@ -3,7 +3,7 @@ import urllib.parse
 import json
 import sqlite3
 import os
-from database import DB_PATH
+from database import get_connection, DB_PATH
 from config import USER_CONFIG
 
 # Telegram Bot Credentials
@@ -50,21 +50,21 @@ def send_telegram_message(text: str, token: str = None, chat_id: str = None) -> 
 
 def generate_live_report() -> str:
     """
-    Pulls recent application records from SQLite and formats a clean Telegram report.
+    Pulls recent application records from Postgres/SQLite and formats a clean Telegram report.
     """
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("SELECT count(*) FROM jobs")
     total_scanned = cur.fetchone()[0]
 
-    cur.execute("SELECT count(*) FROM jobs WHERE status = 'APPLIED_READY' OR status = 'APPLIED'")
+    cur.execute("SELECT count(*) FROM jobs WHERE status IN ('APPLIED_READY', 'APPLIED', 'SUBMITTED')")
     total_applied = cur.fetchone()[0]
 
     cur.execute("""
         SELECT title, company, match_score, url 
         FROM jobs 
-        WHERE status = 'APPLIED_READY' OR status = 'APPLIED'
+        WHERE status IN ('APPLIED_READY', 'APPLIED', 'SUBMITTED')
         ORDER BY match_score DESC, id DESC 
         LIMIT 6
     """)
