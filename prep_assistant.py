@@ -641,3 +641,398 @@ def generate_test_cases(feature: str) -> List[Dict[str, str]]:
         }
     ]
 
+# ==============================================================================
+# AI FEATURE 2: ROOT CAUSE ANALYZER (RCA) & AUTOMATED JIRA DEFECT DRAFTER
+# ==============================================================================
+def analyze_error_and_draft_jira(error_log: str) -> Dict[str, Any]:
+    """
+    AI-Augmented Root Cause Analysis & JIRA Defect Ticket Generator.
+    Analyzes raw stack traces, test assertion failures, and API status codes.
+    """
+    clean_log = (error_log or "").strip()
+    log_lower = clean_log.lower()
+
+    # Check for Gemini API Key if available
+    import os
+    import json
+    import re
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if api_key and len(clean_log) > 10:
+        try:
+            import urllib.request
+            prompt = (
+                "You are a Senior SDET / QA Lead. Analyze this automated test / application error log:\n\n"
+                f"```\n{clean_log[:1500]}\n```\n\n"
+                "Return a JSON object with this exact structure:\n"
+                "{\n"
+                '  "error_category": "...",\n'
+                '  "rca_summary": "1-2 sentence plain English root cause",\n'
+                '  "rca_details": "Detailed technical explanation",\n'
+                '  "jira_ticket": {\n'
+                '    "key": "DEFECT-2026-QA",\n'
+                '    "title": "Concise defect title",\n'
+                '    "severity": "Blocker | Critical | Major | Medium",\n'
+                '    "environment": "Staging / Automated Regression Suite",\n'
+                '    "steps_to_reproduce": ["Step 1", "Step 2", "Step 3"],\n'
+                '    "expected_result": "...",\n'
+                '    "actual_result": "...",\n'
+                '    "reporter": "Varun M S (QA Automation Engineer)"\n'
+                "  },\n"
+                '  "suggested_code_fix": "Code snippet or patch recommendations"\n'
+                "}"
+            )
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            req = urllib.request.Request(
+                url,
+                data=json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                text_out = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                cleaned = re.search(r"\{.*\}", text_out, re.DOTALL)
+                if cleaned:
+                    return json.loads(cleaned.group(0))
+        except Exception:
+            pass
+
+    # Heuristic Semantic Engine (Zero-failure offline engine)
+    category = "General Runtime / Test Execution Error"
+    severity = "Major"
+    title = "Automated Test Failure: Unexpected Exception in Execution"
+    rca_summary = "An unexpected exception halted the automated test run. Review the error details below."
+    rca_details = "The runtime system caught an unhandled exception during step execution."
+    steps = [
+        "1. Launch automated test runner against target environment",
+        "2. Execute test workflow leading up to failure point",
+        "3. Observe exception thrown in test console / network log"
+    ]
+    expected = "Operation executes within SLA thresholds and returns valid response"
+    actual = clean_log[:150] or "Execution threw an unhandled error"
+    suggested_fix = "# Add defensive validation check:\nif response and response.status_code == 200:\n    process_payload(response.json())\nelse:\n    logger.error('Invalid response received')"
+
+    if any(k in log_lower for k in ["timeout", "timeouterror", "waiting for selector", "stale element", "locator"]):
+        category = "UI Automation Locator / Latency Failure"
+        severity = "Major"
+        title = "UI Test Flakiness: Element locator timed out before becoming actionable"
+        rca_summary = "The automation locator timed out or was not found before becoming actionable in the DOM."
+        rca_details = "A Playwright/Selenium locator exceeded its timeout limit. This typically occurs when client-side JavaScript renders asynchronously, or when frontend developers modify DOM attributes (id, class, test-id)."
+        steps = [
+            "1. Navigate to target application URL",
+            "2. Trigger preceding action (e.g., click login / navigate catalog)",
+            "3. Attempt to interact with target selector within timeout threshold"
+        ]
+        expected = "Target element renders and enters clickable/actionable state within 5000ms"
+        actual = "Locator timed out with TimeoutError waiting for element state"
+        suggested_fix = "# 1. Use explicit auto-waiting assertions:\npage.locator(selector).wait_for(state='visible', timeout=10000)\n# 2. Or implement AI Self-Healing locator fallback"
+
+    elif any(k in log_lower for k in ["500", "502", "503", "504", "internal server error", "bad gateway"]):
+        category = "Backend Server / HTTP 5xx Gateway Failure"
+        severity = "Blocker"
+        title = "API Failure: Server returned 500 Internal Server Error during transaction"
+        rca_summary = "The backend service crashed while processing the request due to an unhandled server-side exception or database timeout."
+        rca_details = "An HTTP 5xx status indicates an unhandled server error. Common causes include unhandled database deadlocks, null pointer dereferences in controllers, or downstream microservice timeouts."
+        steps = [
+            "1. Send HTTP request with payload to target REST endpoint",
+            "2. Observe HTTP response status code and headers",
+            "3. Inspect server-side error response payload"
+        ]
+        expected = "API returns HTTP 200 OK / 201 Created with valid JSON schema"
+        actual = "Server responded with HTTP 500 Internal Server Error"
+        suggested_fix = "# Wrap controller endpoint in try/except block with structured JSON error:\ntry:\n    result = service.process_transaction(payload)\n    return jsonify(result), 200\nexcept DatabaseException as db_err:\n    logger.critical(f'DB Deadlock: {db_err}')\n    return jsonify({'error': 'Service temporarily degraded'}), 503"
+
+    elif any(k in log_lower for k in ["401", "403", "unauthorized", "forbidden", "token expired", "jwt"]):
+        category = "Security & Authentication Failure"
+        severity = "Critical"
+        title = "Security Assertion: Authentication token rejected with 401 Unauthorized"
+        rca_summary = "The request failed authentication due to a missing, malformed, or expired Bearer JWT token."
+        rca_details = "The authentication middleware intercepted the request and rejected credentials. Verify whether the token expired, header casing is correct ('Authorization: Bearer <token>'), or test user permissions were revoked."
+        steps = [
+            "1. Authenticate test user via POST /api/v1/auth/login",
+            "2. Extract returned auth_token",
+            "3. Send authenticated request with Authorization header"
+        ]
+        expected = "Valid JWT token grants access to protected resources"
+        actual = "API rejected request with 401 Unauthorized / Token Expired"
+        suggested_fix = "# Ensure token refresh logic handles expiration gracefully:\nif response.status_code == 401:\n    refreshed_token = auth_client.refresh_session()\n    headers['Authorization'] = f'Bearer {refreshed_token}'\n    return retry_request(headers=headers)"
+
+    elif any(k in log_lower for k in ["assertionerror", "assert", "expected", "to equal", "mismatch"]):
+        category = "Functional Test Assertion Mismatch"
+        severity = "Major"
+        title = "Regression Defect: Value assertion mismatch against business specification"
+        rca_summary = "An assertion verified that the actual application output deviated from documented business requirements."
+        rca_details = "The automated assertion evaluated expected vs actual states (e.g. math calculation, status string, or count) and detected an inconsistency indicative of a regression bug."
+        steps = [
+            "1. Initialize test dataset with predefined boundary values",
+            "2. Trigger business logic workflow",
+            "3. Assert expected state against actual returned value"
+        ]
+        expected = "Actual value strictly matches the expected acceptance criteria"
+        actual = clean_log[:150]
+        suggested_fix = "# Verify arithmetic rounding & floating-point precision:\nimport math\nassert math.isclose(actual_total, expected_total, rel_tol=1e-2), f'Total mismatch: {actual_total} vs {expected_total}'"
+
+    elif any(k in log_lower for k in ["nullpointer", "cannot read property", "typeerror", "attributeerror", "keyerror"]):
+        category = "Null Reference / Schema Parsing Defect"
+        severity = "Major"
+        title = "Schema Defect: Unhandled TypeError / Missing Key in response payload"
+        rca_summary = "The application attempted to access an object property or dictionary key that was undefined or null."
+        rca_details = "A data parsing routine attempted property access on a null/undefined reference, indicating an unexpected change in API response structure or missing optional field handling."
+        steps = [
+            "1. Parse API response payload into JSON object",
+            "2. Access nested attribute without defensive presence verification",
+            "3. Observe runtime exception thrown"
+        ]
+        expected = "API payload adheres to schema contract with all required attributes populated"
+        actual = "Runtime threw TypeError / KeyError accessing undefined property"
+        suggested_fix = "# Use defensive dictionary / optional chaining:\nvalue = data.get('nested_property', {}).get('target_field', default_value)"
+
+    return {
+        "error_category": category,
+        "rca_summary": rca_summary,
+        "rca_details": rca_details,
+        "jira_ticket": {
+            "key": "DEFECT-2026-QA",
+            "title": title,
+            "severity": severity,
+            "environment": "Staging / Automated Regression Suite",
+            "steps_to_reproduce": steps,
+            "expected_result": expected,
+            "actual_result": actual,
+            "reporter": "Varun M S (QA Automation Engineer)"
+        },
+        "suggested_code_fix": suggested_fix
+    }
+
+# ==============================================================================
+# AI FEATURE 3: ADAPTIVE MOCK INTERVIEW EVALUATOR (LLM SCORING)
+# ==============================================================================
+def evaluate_interview_answer_ai(question_id: int, user_answer: str) -> Dict[str, Any]:
+    """
+    Evaluates candidate's technical interview answer using LLM / semantic heuristics.
+    Returns score (0-10), keyword analysis, and senior SDET model answer.
+    """
+    clean_ans = (user_answer or "").strip()
+    ans_lower = clean_ans.lower()
+
+    # Find base question
+    from telegram_listener import INTERVIEW_QUESTIONS
+    q_data = next((q for q in INTERVIEW_QUESTIONS if q.get("id") == question_id), INTERVIEW_QUESTIONS[0])
+
+    keywords = q_data.get("keywords", [])
+    model_answer = q_data.get("model_answer", "")
+    tip = q_data.get("tip", "")
+
+    # Check for Gemini API Key
+    import os
+    import json
+    import re
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if api_key and len(clean_ans) > 10:
+        try:
+            import urllib.request
+            prompt = (
+                f"You are a Senior QA Manager conducting a technical interview. Evaluate this candidate response.\n"
+                f"Question: {q_data['question']}\n"
+                f"Model Answer: {model_answer}\n"
+                f"Candidate's Answer: {clean_ans}\n\n"
+                "Return a JSON object with this exact structure:\n"
+                "{\n"
+                '  "score": 8.5,\n'
+                '  "matched_keywords": ["keyword1", "keyword2"],\n'
+                '  "missing_keywords": ["keyword3"],\n'
+                '  "feedback": "2-3 sentences evaluating technical depth and actionable improvement",\n'
+                '  "model_answer": "..."\n'
+                "}"
+            )
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            req = urllib.request.Request(
+                url,
+                data=json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                text_out = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                cleaned = re.search(r"\{.*\}", text_out, re.DOTALL)
+                if cleaned:
+                    return json.loads(cleaned.group(0))
+        except Exception:
+            pass
+
+    # Heuristic Semantic Evaluation
+    hits = [kw for kw in keywords if kw.lower() in ans_lower]
+    missed = [kw for kw in keywords if kw.lower() not in ans_lower]
+
+    num_hits = len(hits)
+    # Scale: 1 hit = 5.3, 3 hits = 6.9, 5 hits = 8.5, 7+ hits = 9.5
+    base_score = 4.0 + min(num_hits * 0.8, 4.5)
+    length_bonus = 1.0 if len(clean_ans.split()) >= 20 else (0.5 if len(clean_ans.split()) >= 10 else 0.0)
+    score = min(round(base_score + length_bonus, 1), 10.0)
+
+    if score >= 8.5:
+        feedback = "Outstanding response! You demonstrated strong technical terminology, systematic debugging discipline, and clear understanding of the QA lifecycle."
+    elif score >= 6.5:
+        feedback = f"Solid answer. Good mention of core concepts, but ensure you also highlight: {', '.join(missed[:3])} to impress senior technical interviewers."
+    else:
+        feedback = f"Decent start. To elevate this answer to Senior SDET standards, incorporate: {', '.join(missed[:4])}."
+
+    return {
+        "score": score,
+        "matched_keywords": hits,
+        "missing_keywords": missed[:5],
+        "feedback": feedback,
+        "model_answer": model_answer,
+        "tip": tip
+    }
+
+# ==============================================================================
+# AI FEATURE 4: GHERKIN BDD FEATURE & PYTEST-BDD STEP GENERATOR
+# ==============================================================================
+def generate_bdd_feature(user_story_or_feature: str) -> Dict[str, Any]:
+    """
+    Converts a plain English feature requirement into:
+    1. Pristine Gherkin .feature file (Feature, Scenario Outline, Given, When, Then, Examples).
+    2. Matching Python pytest-bdd step definitions ready for automation.
+    """
+    clean_story = (user_story_or_feature or "E-Commerce Discount Coupon Checkout").strip()
+    story_lower = clean_story.lower()
+
+    # Deducing domain
+    feature_name = clean_story.title()
+    if "coupon" in story_lower or "discount" in story_lower:
+        feature_name = "Discount Coupon Application and Validation"
+        gherkin = f"""Feature: {feature_name}
+  As an online shopper
+  I want to apply discount coupon codes during checkout
+  So that I can receive promotional savings on my purchase
+
+  Scenario Outline: Applying promotional coupons with boundary validation
+    Given the user has added items totaling "<subtotal>" to the shopping cart
+    When the user enters coupon code "<coupon_code>"
+    And the user clicks the "Apply Coupon" button
+    Then the system should display the message "<expected_message>"
+    And the final order total should be calculated as "<final_total>"
+
+    Examples:
+      | subtotal | coupon_code | expected_message         | final_total |
+      | 1000.00  | SAVE10      | Coupon applied! 10% off  | 900.00      |
+      | 2500.00  | FLAT500     | Coupon applied! ₹500 off | 2000.00     |
+      | 500.00   | EXPIRED20   | Error: Coupon expired    | 500.00      |
+      | 1500.00  | INVALID     | Error: Invalid coupon    | 1500.00     |
+"""
+        pytest_steps = """import pytest
+from pytest_bdd import scenarios, given, when, then, parsers
+
+scenarios('coupon_checkout.feature')
+
+@given(parsers.parse('the user has added items totaling "{subtotal}" to the shopping cart'))
+def setup_cart(page, subtotal):
+    page.goto('/cart')
+    page.evaluate(f"window.setCartTotal({subtotal})")
+
+@when(parsers.parse('the user enters coupon code "{coupon_code}"'))
+def enter_coupon(page, coupon_code):
+    page.fill('#coupon-input', coupon_code)
+
+@when('the user clicks the "Apply Coupon" button')
+def click_apply(page):
+    page.click('#apply-coupon-btn')
+
+@then(parsers.parse('the system should display the message "{expected_message}"'))
+def verify_message(page, expected_message):
+    banner = page.locator('.coupon-alert-banner')
+    assert expected_message in banner.inner_text()
+
+@then(parsers.parse('the final order total should be calculated as "{final_total}"'))
+def verify_total(page, final_total):
+    total_text = page.locator('#order-total').inner_text()
+    assert final_total in total_text
+"""
+    elif "payment" in story_lower or "upi" in story_lower or "checkout" in story_lower:
+        feature_name = "Secure Online Payment and UPI Checkout"
+        gherkin = f"""Feature: {feature_name}
+  As a registered customer
+  I want to complete orders using UPI and Card payment methods
+  So that my purchase is processed securely with instant confirmation
+
+  Scenario Outline: Payment gateway status verification and idempotent processing
+    Given the user is on the order checkout page with order amount "<amount>"
+    When the user selects payment method "<method>"
+    And submits payment details with "<credentials>"
+    Then the transaction should result in status "<status>"
+    And the user should see confirmation screen with order reference
+
+    Examples:
+      | amount  | method | credentials        | status    |
+      | 1499.00 | UPI    | user@okaxis        | SUCCESS   |
+      | 2999.00 | CARD   | 4111222233334444   | SUCCESS   |
+      | 799.00  | UPI    | invalid_vpa_id     | FAILED    |
+      | 5000.00 | NETBNK | timeout_bank_sim   | TIMEOUT   |
+"""
+        pytest_steps = """import pytest
+from pytest_bdd import scenarios, given, when, then, parsers
+
+scenarios('payment_checkout.feature')
+
+@given(parsers.parse('the user is on the order checkout page with order amount "{amount}"'))
+def navigate_checkout(page, amount):
+    page.goto(f'/checkout?amount={amount}')
+
+@when(parsers.parse('the user selects payment method "{method}"'))
+def select_method(page, method):
+    page.click(f'input[value="{method}"]')
+
+@when(parsers.parse('submits payment details with "{credentials}"'))
+def submit_payment(page, credentials):
+    page.fill('#payment-credential-input', credentials)
+    page.click('#submit-payment-btn')
+
+@then(parsers.parse('the transaction should result in status "{status}"'))
+def verify_status(page, status):
+    status_badge = page.locator('.payment-status-badge')
+    assert status in status_badge.inner_text()
+"""
+    else:
+        feature_name = f"{clean_story} Workflow Verification"
+        gherkin = f"""Feature: {feature_name}
+  As an authenticated user
+  I want to interact with {clean_story}
+  So that the feature delivers reliable performance conforming to IEEE standards
+
+  Scenario: Positive end-to-end execution of {clean_story}
+    Given the application is running in staging environment
+    When the user triggers {clean_story} with valid parameters
+    Then the system should return HTTP status 200 OK
+    And the UI state should update within 500ms SLA
+"""
+        pytest_steps = f"""import pytest
+from pytest_bdd import scenarios, given, when, then
+
+scenarios('{clean_story.lower().replace(" ", "_")}.feature')
+
+@given('the application is running in staging environment')
+def verify_environment(client):
+    res = client.get('/health')
+    assert res.status_code == 200
+
+@when('the user triggers {clean_story} with valid parameters')
+def trigger_action(page):
+    page.click('#trigger-{clean_story.lower().replace(" ", "-")}-btn')
+
+@then('the system should return HTTP status 200 OK')
+def verify_success(page):
+    assert page.locator('.success-banner').is_visible()
+
+@then('the UI state should update within 500ms SLA')
+def verify_sla(page):
+    assert page.evaluate("window.performance.timing.loadEventEnd - window.performance.timing.navigationStart < 500")
+"""
+
+    return {
+        "feature_name": feature_name,
+        "gherkin_file": gherkin,
+        "pytest_steps": pytest_steps,
+        "framework": "pytest-bdd + Playwright"
+    }
+
+

@@ -245,12 +245,60 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 cases = generate_test_cases(feature)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "success", "feature": feature, "test_cases": cases}).encode('utf-8'))
                 return
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+                return
+
+        elif parsed_path.path == "/api/ai/rca":
+            try:
+                from prep_assistant import analyze_error_and_draft_jira
+                if self.headers.get('Content-Type') == 'application/json':
+                    data = json.loads(post_data)
+                else:
+                    data = {k: v[0] for k, v in parse_qs(post_data).items()}
+                error_log = data.get("error_log", "")
+                result = analyze_error_and_draft_jira(error_log)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+                return
+
+        elif parsed_path.path == "/api/generate-bdd":
+            try:
+                from prep_assistant import generate_bdd_feature
+                if self.headers.get('Content-Type') == 'application/json':
+                    data = json.loads(post_data)
+                else:
+                    data = {k: v[0] for k, v in parse_qs(post_data).items()}
+                story = data.get("story", "E-Commerce Discount Coupon")
+                result = generate_bdd_feature(story)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
                 return
@@ -537,8 +585,113 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     }});
                 }}
 
+                let currentJiraTicket = null;
+                let currentCodeFix = "";
+                function setRcaAndRun(err) {{
+                    document.getElementById('errorInput').value = err;
+                    runRCA();
+                }}
+
+                function runRCA() {{
+                    let err = document.getElementById('errorInput').value.trim();
+                    if (!err) return;
+                    document.getElementById('rcaResult').style.display = 'block';
+                    document.getElementById('rcaSummary').innerText = 'Analyzing error patterns and synthesizing root cause...';
+                    
+                    fetch('/api/ai/rca', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ error_log: err }})
+                    }}).then(res => res.json()).then(data => {{
+                        document.getElementById('rcaCategory').innerText = data.error_category || 'General Defect';
+                        document.getElementById('rcaSummary').innerText = data.rca_summary || '';
+                        document.getElementById('rcaDetails').innerText = data.rca_details || '';
+
+                        let jt = data.jira_ticket || {{}};
+                        currentJiraTicket = jt;
+                        document.getElementById('jiraTitle').innerText = (jt.key || 'DEFECT-2026') + ': ' + (jt.title || 'Bug Report');
+                        let sevBadge = document.getElementById('jiraSeverity');
+                        sevBadge.innerText = jt.severity || 'Major';
+                        sevBadge.style.background = (jt.severity === 'Blocker' || jt.severity === 'Critical') ? '#dc2626' : '#d97706';
+                        
+                        let stepsHtml = (jt.steps_to_reproduce || []).map(s => `<li>${{s}}</li>`).join('');
+                        document.getElementById('jiraSteps').innerHTML = stepsHtml;
+                        document.getElementById('jiraExpected').innerText = jt.expected_result || '';
+                        document.getElementById('jiraActual').innerText = jt.actual_result || '';
+
+                        currentCodeFix = data.suggested_code_fix || '';
+                        document.getElementById('rcaCodeFix').innerText = currentCodeFix;
+                    }}).catch(err => {{
+                        document.getElementById('rcaSummary').innerText = 'Analysis failed. Check server connection.';
+                    }});
+                }}
+
+                function copyJiraTicket() {{
+                    if (!currentJiraTicket) return;
+                    let jt = currentJiraTicket;
+                    let text = `[JIRA TICKET] ${{jt.key}}: ${{jt.title}}\\nSeverity: ${{jt.severity}}\\nEnvironment: ${{jt.environment}}\\n\\nSteps to Reproduce:\\n${{(jt.steps_to_reproduce || []).join('\\n')}}\\n\\nExpected Result:\\n${{jt.expected_result}}\\n\\nActual Result:\\n${{jt.actual_result}}\\n\\nReporter: ${{jt.reporter}}`;
+                    navigator.clipboard.writeText(text).then(() => {{
+                        let btn = document.getElementById('copyJiraBtn');
+                        btn.innerText = '✅ JIRA Defect Copied!';
+                        setTimeout(() => {{ btn.innerText = '📋 Copy JIRA Ticket'; }}, 2000);
+                    }});
+                }}
+
+                function copyCodeFix() {{
+                    if (!currentCodeFix) return;
+                    navigator.clipboard.writeText(currentCodeFix).then(() => {{
+                        let btn = document.getElementById('copyFixBtn');
+                        btn.innerText = '✅ Code Patch Copied!';
+                        setTimeout(() => {{ btn.innerText = '📋 Copy Code Fix'; }}, 2000);
+                    }});
+                }}
+
+                let currentGherkin = "";
+                let currentPytestSteps = "";
+                function setBddAndRun(story) {{
+                    document.getElementById('bddInput').value = story;
+                    runBDD();
+                }}
+
+                function runBDD() {{
+                    let story = document.getElementById('bddInput').value.trim();
+                    if (!story) return;
+                    document.getElementById('bddResult').style.display = 'block';
+                    fetch('/api/generate-bdd', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ story: story }})
+                    }}).then(res => res.json()).then(data => {{
+                        document.getElementById('bddFeatureTitle').innerText = data.feature_name || 'Feature';
+                        currentGherkin = data.gherkin_file || '';
+                        currentPytestSteps = data.pytest_steps || '';
+                        document.getElementById('gherkinCode').innerText = currentGherkin;
+                        document.getElementById('pytestCode').innerText = currentPytestSteps;
+                    }}).catch(err => console.error(err));
+                }}
+
+                function copyGherkin() {{
+                    if (!currentGherkin) return;
+                    navigator.clipboard.writeText(currentGherkin).then(() => {{
+                        let btn = document.getElementById('copyGherkinBtn');
+                        btn.innerText = '✅ Gherkin Copied!';
+                        setTimeout(() => {{ btn.innerText = '📋 Copy .feature'; }}, 2000);
+                    }});
+                }}
+
+                function copyPytestSteps() {{
+                    if (!currentPytestSteps) return;
+                    navigator.clipboard.writeText(currentPytestSteps).then(() => {{
+                        let btn = document.getElementById('copyPytestBtn');
+                        btn.innerText = '✅ Pytest Steps Copied!';
+                        setTimeout(() => {{ btn.innerText = '📋 Copy pytest-bdd Steps'; }}, 2000);
+                    }});
+                }}
+
                 window.addEventListener('DOMContentLoaded', () => {{
                     runGenerator();
+                    setRcaAndRun("playwright._impl._errors.TimeoutError: Locator.click: Timeout 5000ms exceeded waiting for locator('#checkout-button')");
+                    setBddAndRun("E-Commerce Discount Coupon Checkout");
                 }});
             </script>
         </head>
@@ -559,6 +712,8 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
                 <div class="tabs">
                     <button class="tab-btn active" id="btn-qa" onclick="switchTab('qa')">🧪 Software Testing & QA</button>
+                    <button class="tab-btn" id="btn-rca" onclick="switchTab('rca')">🔍 AI Root Cause & JIRA</button>
+                    <button class="tab-btn" id="btn-bdd" onclick="switchTab('bdd')">🥒 AI Gherkin BDD Generator</button>
                     <button class="tab-btn" id="btn-generator" onclick="switchTab('generator')">⚡ AI Test Case Generator</button>
                     <button class="tab-btn" id="btn-py" onclick="switchTab('py')">🐍 Python & Coding Assessment</button>
                     <button class="tab-btn" id="btn-ai" onclick="switchTab('ai')">🤖 AI & Machine Learning</button>
@@ -570,6 +725,99 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div class="tab-content active" id="tab-qa">
                     <p style="color: #475569; margin-bottom: 15px;">Focus on test case writing, bug life cycle transitions, severity vs priority, and API status codes.</p>
                     {qa_sections}
+                </div>
+
+                <!-- AI Root Cause Analyzer & JIRA Tab -->
+                <div class="tab-content" id="tab-rca">
+                    <p style="color: #475569; margin-bottom: 15px;">Paste any stack trace, test assertion failure, or HTTP error to generate Root Cause Analysis (RCA), an IEEE 829 JIRA bug ticket, and developer code fix:</p>
+                    <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:20px;">
+                        <label style="font-weight:600; font-size:0.95rem; color:#0f172a; display:block; margin-bottom:8px;">Paste Error Log or Stack Trace:</label>
+                        <textarea id="errorInput" style="width:100%; height:110px; padding:10px 12px; font-family:monospace; font-size:0.86rem; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; margin-bottom:12px; resize:vertical;"></textarea>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:0.82rem; color:#64748b;">
+                                <span>Presets:</span>
+                                <button onclick="setRcaAndRun('playwright._impl._errors.TimeoutError: Locator.click: Timeout 5000ms exceeded waiting for locator(\'#checkout-button\')')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer;">⏱️ Playwright Timeout</button>
+                                <button onclick="setRcaAndRun('HTTP/1.1 500 Internal Server Error\nError: DBTransactionDeadlock at PaymentGatewayController:142')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer;">💥 HTTP 500 DB Deadlock</button>
+                                <button onclick="setRcaAndRun('HTTP/1.1 401 Unauthorized\nPayload: {{\'error\': \'jwt expired\', \'token_exp\': 1763110000}}')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer;">🔐 401 JWT Expired</button>
+                                <button onclick="setRcaAndRun('AssertionError: assert 499.00 == 449.10\n+ where 499.00 = cart.total\n- where 449.10 = expected_with_10pct_discount')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer;">📐 Math Assertion Mismatch</button>
+                            </div>
+                            <button onclick="runRCA()" style="background:#0284c7; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer;">🔍 Analyze & Draft JIRA</button>
+                        </div>
+                    </div>
+
+                    <div id="rcaResult" style="display:none;">
+                        <!-- Root Cause Analysis Card -->
+                        <div class="prep-card" style="border-left-color:#0284c7;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 style="margin:0; color:#0369a1;">🧠 Root Cause Analysis (RCA)</h3>
+                                <span id="rcaCategory" style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-weight:600; font-size:0.8rem;">Category</span>
+                            </div>
+                            <p id="rcaSummary" style="font-weight:600; color:#0f172a; margin:10px 0 6px 0;"></p>
+                            <div id="rcaDetails" style="color:#475569; font-size:0.9rem; line-height:1.5;"></div>
+                        </div>
+
+                        <!-- JIRA Bug Ticket Card -->
+                        <div class="prep-card" style="border-left-color:#ef4444; background:#fffbfb;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <h3 id="jiraTitle" style="margin:0; color:#b91c1c; border-bottom:none; padding:0;">DEFECT-2026: Bug Report</h3>
+                                    <span id="jiraSeverity" style="background:#ef4444; color:white; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:0.75rem;">Major</span>
+                                </div>
+                                <button onclick="copyJiraTicket()" id="copyJiraBtn" style="background:#0f172a; color:white; border:none; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; cursor:pointer;">📋 Copy JIRA Ticket</button>
+                            </div>
+                            <div style="font-size:0.88rem; line-height:1.5; color:#1e293b;">
+                                <b>Steps to Reproduce:</b>
+                                <ol id="jiraSteps" style="margin:6px 0 10px 20px; padding:0;"></ol>
+                                <div style="margin-bottom:6px;"><b>Expected Result:</b> <span id="jiraExpected" style="color:#166534;"></span></div>
+                                <div><b>Actual Result:</b> <span id="jiraActual" style="color:#991b1b;"></span></div>
+                            </div>
+                        </div>
+
+                        <!-- Developer Code Fix Card -->
+                        <div class="prep-card" style="border-left-color:#10b981;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <h3 style="margin:0; color:#047857; border-bottom:none; padding:0;">🛠️ Recommended Developer Code Fix</h3>
+                                <button onclick="copyCodeFix()" id="copyFixBtn" style="background:#047857; color:white; border:none; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; cursor:pointer;">📋 Copy Code Patch</button>
+                            </div>
+                            <pre id="rcaCodeFix" style="background:#0f172a; color:#a7f3d0; padding:15px; border-radius:6px; font-family:monospace; font-size:0.85rem; line-height:1.45; overflow-x:auto; margin:0;"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Gherkin BDD Tab -->
+                <div class="tab-content" id="tab-bdd">
+                    <p style="color: #475569; margin-bottom: 15px;">Generate Behavior-Driven Development (BDD) Gherkin scenarios and matching Python pytest-bdd step definitions ready to run:</p>
+                    <div style="background:white; padding:20px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:20px;">
+                        <label style="font-weight:600; font-size:0.95rem; color:#0f172a; display:block; margin-bottom:8px;">Enter Feature or User Story:</label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                            <input type="text" id="bddInput" placeholder="e.g., E-Commerce Discount Coupon Checkout, UPI Payment..." value="E-Commerce Discount Coupon Checkout" style="flex:1; min-width:250px; padding:10px 14px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                            <button onclick="runBDD()" style="background:#16a34a; color:white; border:none; padding:10px 22px; border-radius:6px; font-weight:600; cursor:pointer;">🥒 Generate BDD Scenarios</button>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:0.85rem; color:#64748b;">
+                            <span>Presets:</span>
+                            <button onclick="setBddAndRun('Discount Coupon Code Checkout')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">🛒 Coupon Code</button>
+                            <button onclick="setBddAndRun('UPI Payment Gateway (GPay/PhonePe)')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">💳 UPI Payment</button>
+                            <button onclick="setBddAndRun('Two-Factor Authentication (2FA) SMS OTP')" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer;">🔐 2FA Login</button>
+                        </div>
+                    </div>
+
+                    <div id="bddResult" style="display:none;">
+                        <div class="prep-card" style="border-left-color:#16a34a;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <h3 id="bddFeatureTitle" style="margin:0; color:#15803d; border-bottom:none; padding:0;">Feature: Gherkin Specification</h3>
+                                <button onclick="copyGherkin()" id="copyGherkinBtn" style="background:#15803d; color:white; border:none; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; cursor:pointer;">📋 Copy .feature</button>
+                            </div>
+                            <pre id="gherkinCode" style="background:#0f172a; color:#f8fafc; padding:15px; border-radius:6px; font-family:monospace; font-size:0.85rem; line-height:1.45; overflow-x:auto; margin:0;"></pre>
+                        </div>
+
+                        <div class="prep-card" style="border-left-color:#0284c7;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <h3 style="margin:0; color:#0369a1; border-bottom:none; padding:0;">🐍 Python pytest-bdd Step Definitions</h3>
+                                <button onclick="copyPytestSteps()" id="copyPytestBtn" style="background:#0284c7; color:white; border:none; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:600; cursor:pointer;">📋 Copy pytest-bdd Steps</button>
+                            </div>
+                            <pre id="pytestCode" style="background:#0f172a; color:#a7f3d0; padding:15px; border-radius:6px; font-family:monospace; font-size:0.85rem; line-height:1.45; overflow-x:auto; margin:0;"></pre>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- AI Test Case Generator Tab -->

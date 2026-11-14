@@ -169,5 +169,58 @@ class TestJobBot(unittest.TestCase):
         self.assertEqual(base_url_var["value"], "https://job-auto-apply-bot.onrender.com")
         print("\n[Test Postman Mock API] Verified Postman collection is configured for 24/7 cloud testing.")
 
+    def test_ai_self_healing_locator(self):
+        sys_path_added = False
+        qa_path = "projects/qa-ecommerce-test-suite/tests"
+        import sys
+        if qa_path not in sys.path:
+            sys.path.insert(0, qa_path)
+            sys_path_added = True
+        try:
+            from test_self_healing_playwright import AISelfHealingLocator
+            healer = AISelfHealingLocator()
+            candidates = [
+                {"tag": "button", "id": "login-button", "class": "btn_action", "text": "Login", "type": "submit", "data-test": "login-button"},
+                {"tag": "a", "id": "cancel-link", "class": "link_cancel", "text": "Cancel"}
+            ]
+            res = healer.deduce_healed_selector("#broken-btn", "Click the login submit button", candidates)
+            self.assertIn(res["healed_selector"], ["#login-button", "[data-test='login-button']"])
+            self.assertGreaterEqual(res["confidence"], 0.70)
+            print("\n[Test AI Self-Healing] Verified dynamic locator recovery with confidence:", res["confidence"])
+        finally:
+            if sys_path_added and qa_path in sys.path:
+                sys.path.remove(qa_path)
+
+    def test_ai_root_cause_analysis_and_jira(self):
+        from prep_assistant import analyze_error_and_draft_jira
+        err = "playwright._impl._errors.TimeoutError: Locator.click: Timeout 5000ms exceeded waiting for locator('#checkout-button')"
+        res = analyze_error_and_draft_jira(err)
+        self.assertIn("UI Automation", res["error_category"])
+        self.assertIn("timed out", res["rca_summary"])
+        jt = res["jira_ticket"]
+        self.assertEqual(jt["key"], "DEFECT-2026-QA")
+        self.assertGreaterEqual(len(jt["steps_to_reproduce"]), 2)
+        self.assertIn("wait_for", res["suggested_code_fix"])
+        print("\n[Test AI Root Cause Analyzer & JIRA] Verified automatic defect ticketing and code patch generation.")
+
+    def test_ai_interview_answer_evaluation(self):
+        from prep_assistant import evaluate_interview_answer_ai
+        ans = "I would first reproduce the bug with exact steps, take Chrome DevTools network logs and screenshots, and check against the SRS requirements document before consulting the QA lead."
+        eval_res = evaluate_interview_answer_ai(1, ans)
+        self.assertGreaterEqual(eval_res["score"], 7.0)
+        self.assertGreaterEqual(len(eval_res["matched_keywords"]), 2)
+        self.assertIn("reproduce", eval_res["matched_keywords"])
+        print(f"\n[Test AI Interview Evaluation] Score: {eval_res['score']}/10 | Matched keywords: {eval_res['matched_keywords']}")
+
+    def test_ai_gherkin_bdd_generator(self):
+        from prep_assistant import generate_bdd_feature
+        res = generate_bdd_feature("Shopping Cart Discount Coupon Checkout")
+        self.assertIn("Feature:", res["gherkin_file"])
+        self.assertIn("Scenario Outline:", res["gherkin_file"])
+        self.assertIn("@given", res["pytest_steps"])
+        self.assertIn("@when", res["pytest_steps"])
+        self.assertIn("@then", res["pytest_steps"])
+        print("\n[Test AI Gherkin BDD Generator] Verified Gherkin feature file and pytest-bdd step definitions.")
+
 if __name__ == "__main__":
     unittest.main()

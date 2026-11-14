@@ -46,21 +46,22 @@ def handle_command(text: str, chat_id: str):
         step = sess["step"]
         q = INTERVIEW_QUESTIONS[step]
 
-        # Score the answer based on keywords & length
-        matched = [k for k in q["keywords"] if k in text.lower()]
-        word_count = len(text.split())
-        if word_count < 5:
-            score = 4.0
-        else:
-            ratio = len(matched) / len(q["keywords"])
-            score = min(10.0, max(5.0, round(5.0 + ratio * 6.5, 1)))
-
+        # AI Semantic Evaluation of candidate answer
+        from prep_assistant import evaluate_interview_answer_ai
+        eval_res = evaluate_interview_answer_ai(q["id"], text)
+        score = eval_res.get("score", 7.0)
         sess["scores"].append(score)
 
+        matched_str = ", ".join(eval_res.get("matched_keywords", [])) or "Good conceptual approach"
+        missing_str = ", ".join(eval_res.get("missing_keywords", [])) or "None! Key terms covered"
+
         feedback = (
-            f"🎯 <b>Evaluation for Q{step+1}:</b>\n"
-            f"⭐️ <b>Your Score:</b> <code>{score}/10</code>\n\n"
-            f"✅ <b>Model Answer:</b>\n<i>\"{q['model_answer']}\"</i>\n\n"
+            f"🎯 <b>AI Feedback for Q{step+1}:</b>\n"
+            f"⭐️ <b>AI Score:</b> <code>{score}/10</code>\n"
+            f"💬 <b>Assessment:</b> {eval_res.get('feedback', '')}\n\n"
+            f"✅ <b>Keywords Used:</b> <code>{matched_str}</code>\n"
+            f"⚠️ <b>Keywords to Add:</b> <code>{missing_str}</code>\n\n"
+            f"🎓 <b>Senior SDET Model Answer:</b>\n<i>\"{eval_res.get('model_answer', q['model_answer'])}\"</i>\n\n"
             f"💡 <b>Pro Tip:</b> {q['tip']}\n"
             f"━━━━━━━━━━━━━━━━━━━\n"
         )
@@ -104,7 +105,9 @@ def handle_command(text: str, chat_id: str):
             "🤖 <b>JOB & ASSESSMENT BOT COMMANDS</b>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
             "• Tap any button below or type a command:\n"
-            "• <b>/interview</b> - Start 3-question technical mock interview\n"
+            "• <b>/interview</b> - Start adaptive technical mock interview\n"
+            "• <b>/rca &lt;error&gt;</b> - AI Root Cause Analysis & JIRA Ticket Drafter\n"
+            "• <b>/bdd &lt;story&gt;</b> - AI Gherkin BDD Feature & Pytest Generator\n"
             "• <b>/status</b> - Current system stats & application counts\n"
             "• <b>/tests</b> - Show pending online tests & interview links\n"
             "• <b>/hr</b> - HR phone screening scripts & model answers\n"
@@ -264,6 +267,50 @@ def handle_command(text: str, chat_id: str):
             "━━━━━━━━━━━━━━━━━━━\n"
             "🔗 <a href='https://job-auto-apply-bot.onrender.com/resume'>View & Print ATS Resume (A4 PDF)</a>\n\n"
             "• Includes: Final Year BCA (2025), QA Test Case Design, Python, AI/ML, and your GitHub projects!"
+        )
+        send_telegram_message(msg, chat_id=chat_id)
+
+    elif cmd.startswith("/rca"):
+        parts = text.split(maxsplit=1)
+        err_input = parts[1] if len(parts) > 1 else ""
+        if not err_input:
+            msg = (
+                "🔍 <b>AI ROOT CAUSE ANALYZER & JIRA DRAFTER</b>\n"
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "Send <code>/rca &lt;your error log or stack trace&gt;</code> to analyze any bug!\n\n"
+                "<i>Example:</i>\n"
+                "<code>/rca TimeoutError: waiting for locator('#checkout-btn') failed after 5000ms</code>\n\n"
+                "Or open the visual analyzer on your <a href='https://job-auto-apply-bot.onrender.com/prep'>Preparation Hub</a>."
+            )
+        else:
+            from prep_assistant import analyze_error_and_draft_jira
+            res = analyze_error_and_draft_jira(err_input)
+            jt = res.get("jira_ticket", {})
+            steps_str = "\n".join([f"• {s}" for s in jt.get("steps_to_reproduce", [])])
+            msg = (
+                f"🧠 <b>AI ROOT CAUSE ANALYSIS</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━\n"
+                f"🏷️ <b>Category:</b> <code>{res.get('error_category')}</code>\n"
+                f"💡 <b>RCA Summary:</b> {res.get('rca_summary')}\n\n"
+                f"📋 <b>JIRA TICKET: {jt.get('key')}: {jt.get('title')}</b>\n"
+                f"🚨 <b>Severity:</b> <code>{jt.get('severity')}</code>\n"
+                f"👣 <b>Steps:</b>\n{steps_str}\n\n"
+                f"✅ <b>Expected:</b> {jt.get('expected_result')}\n"
+                f"❌ <b>Actual:</b> <code>{jt.get('actual_result')}</code>\n\n"
+                f"🛠️ <b>Suggested Fix:</b>\n<pre>{res.get('suggested_code_fix')}</pre>"
+            )
+        send_telegram_message(msg, chat_id=chat_id)
+
+    elif cmd.startswith("/bdd"):
+        parts = text.split(maxsplit=1)
+        story_input = parts[1] if len(parts) > 1 else "E-Commerce Discount Coupon Checkout"
+        from prep_assistant import generate_bdd_feature
+        res = generate_bdd_feature(story_input)
+        msg = (
+            f"🥒 <b>GHERKIN BDD FEATURE: {res.get('feature_name')}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"<pre>{res.get('gherkin_file')}</pre>\n\n"
+            f"📖 <i>Python pytest-bdd steps generated on your <a href='https://job-auto-apply-bot.onrender.com/prep'>Preparation Hub</a>!</i>"
         )
         send_telegram_message(msg, chat_id=chat_id)
 

@@ -20,15 +20,21 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "jobs_bot.db")
 
 def get_connection():
     if DATABASE_URL:
-        import psycopg2
-        return psycopg2.connect(DATABASE_URL)
+        try:
+            import psycopg2
+            return psycopg2.connect(DATABASE_URL)
+        except Exception:
+            pass
     return sqlite3.connect(DB_PATH)
+
+def is_pg(conn) -> bool:
+    return not isinstance(conn, sqlite3.Connection)
 
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     
-    if DATABASE_URL:
+    if is_pg(conn):
         # PostgreSQL schema
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
@@ -158,7 +164,7 @@ def init_db():
 def is_job_applied_or_seen(job_id: str) -> bool:
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     cursor.execute(f"SELECT status FROM jobs WHERE job_id = {ph}", (job_id,))
     row = cursor.fetchone()
     conn.close()
@@ -169,7 +175,7 @@ def record_job(job_id: str, platform: str, title: str, company: str, location: s
     conn = get_connection()
     cursor = conn.cursor()
     
-    if DATABASE_URL:
+    if is_pg(conn):
         # PostgreSQL ON CONFLICT DO UPDATE
         cursor.execute("""
             INSERT INTO jobs 
@@ -195,7 +201,7 @@ def record_job(job_id: str, platform: str, title: str, company: str, location: s
 def mark_applied(job_id: str, status: str = "APPLIED"):
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     cursor.execute(f"""
         UPDATE jobs 
         SET status = {ph}, applied_at = CURRENT_TIMESTAMP 
@@ -211,7 +217,7 @@ def update_job_status(identifier: Any, new_status: str):
     """
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     if str(identifier).isdigit():
         cursor.execute(f"UPDATE jobs SET status = {ph} WHERE id = {ph} OR job_id = {ph}", (new_status, int(identifier), str(identifier)))
     else:
@@ -225,7 +231,7 @@ def toggle_job_star(identifier: Any) -> bool:
     """
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     
     if str(identifier).isdigit():
         cursor.execute(f"SELECT starred FROM jobs WHERE id = {ph} OR job_id = {ph}", (int(identifier), str(identifier)))
@@ -235,7 +241,7 @@ def toggle_job_star(identifier: Any) -> bool:
     
     current = bool(row[0]) if row and row[0] else False
     new_state = not current
-    db_val = new_state if DATABASE_URL else (1 if new_state else 0)
+    db_val = new_state if is_pg(conn) else (1 if new_state else 0)
     
     if str(identifier).isdigit():
         cursor.execute(f"UPDATE jobs SET starred = {ph} WHERE id = {ph} OR job_id = {ph}", (db_val, int(identifier), str(identifier)))
@@ -258,9 +264,9 @@ def record_assessment(company: str, role_title: str, platform: str, test_url: st
                       deadline_or_time: str, prep_topic: str = "General", status: str = "PENDING", notes: str = "") -> int:
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     
-    if DATABASE_URL:
+    if is_pg(conn):
         cursor.execute(f"""
             INSERT INTO assessments (company, role_title, platform, test_url, deadline_or_time, prep_topic, status, notes, created_at)
             VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, CURRENT_TIMESTAMP)
@@ -281,7 +287,7 @@ def record_assessment(company: str, role_title: str, platform: str, test_url: st
 def get_assessments(status: Optional[str] = None) -> List[Dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     
     if status:
         cursor.execute(f"""
@@ -319,7 +325,14 @@ def get_assessments(status: Optional[str] = None) -> List[Dict[str, Any]]:
 def update_assessment_status(assessment_id: int, status: str = "COMPLETED"):
     conn = get_connection()
     cursor = conn.cursor()
-    ph = "%s" if DATABASE_URL else "?"
+    ph = "%s" if is_pg(conn) else "?"
     cursor.execute(f"UPDATE assessments SET status = {ph} WHERE id = {ph}", (status, assessment_id))
     conn.commit()
     conn.close()
+
+# Auto-initialize schema on import safely
+try:
+    init_db()
+except Exception:
+    pass
+

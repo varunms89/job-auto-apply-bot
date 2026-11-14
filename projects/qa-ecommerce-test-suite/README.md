@@ -31,7 +31,22 @@ This repository contains an industry-standard Quality Assurance (QA) test docume
 ├── Varun_MS_Ecommerce_API_Tests.postman_collection.json # Ready-to-import Postman REST API test collection
 ├── requirements.txt                                   # Python Playwright & pytest dependencies
 └── tests/
-    └── test_ecommerce_checkout.py                     # Python Playwright E2E UI automation test script
+    ├── test_ecommerce_checkout.py                     # Python Playwright E2E UI automation test script
+    └── test_self_healing_playwright.py                # AI-Augmented Self-Healing test locator engine
+```
+
+---
+
+## 🩹 AI "Self-Healing" Test Locators in Playwright
+One of the most persistent issues in automated UI testing is **test flakiness** caused by frequent DOM selector changes (e.g. developers renaming `#login-button` to `[data-test='login-button']` or changing CSS class names).
+
+Implemented in **`tests/test_self_healing_playwright.py`**:
+* **Intent-Driven Semantic Recovery:** When a primary locator times out or encounters a stale element reference, the AI Self-Healing Engine captures interactive DOM candidates and deduces replacement selectors using semantic heuristics and Gemini AI.
+* **Zero-Failure Execution:** Recovers broken selectors on the fly, logs an audit trail (`[AI SELF-HEALED]`), and finishes the test without crashing the CI/CD pipeline.
+
+### How to Run AI Self-Healing Test:
+```bash
+python tests/test_self_healing_playwright.py
 ```
 
 ---

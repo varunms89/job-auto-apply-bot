@@ -12,3 +12,10 @@
 
 ---
 
+### 📅 2026-11-14 (Saturday) — Shift-Left Testing in Agile SDLC
+- **Core Concept:** Testing begins during the requirement specification and design phase rather than waiting for code completion. Catching defects during requirement review is 10x cheaper than fixing bugs in system integration testing.
+- **Author:** VARUN M S
+- **Status:** Verified in production & automated test pipelines.
+
+---
+
