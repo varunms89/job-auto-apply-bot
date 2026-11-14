@@ -1,6 +1,9 @@
 import os
+import sys
 import json
 import threading
+from datetime import datetime
+from collections import deque
 from urllib.parse import parse_qs, urlparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from database import get_connection, get_job_stats, record_assessment, get_assessments, update_assessment_status
@@ -10,6 +13,32 @@ from email_monitor import process_email_message
 from telegram_notifier import send_assessment_alert
 
 PORT = int(os.environ.get("PORT", 8080))
+
+# In-memory buffer to stream logs to web dashboard in real time
+LOG_RING_BUFFER = deque(maxlen=250)
+
+class LogInterceptor:
+    def __init__(self, original_stream):
+        self.original_stream = original_stream
+
+    def write(self, data):
+        if self.original_stream:
+            self.original_stream.write(data)
+            self.original_stream.flush()
+        if data and data.strip():
+            for line in data.splitlines():
+                clean_line = line.strip()
+                if clean_line:
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    LOG_RING_BUFFER.append(f"[{timestamp}] {clean_line}")
+
+    def flush(self):
+        if self.original_stream:
+            self.original_stream.flush()
+
+# Install interceptor on stdout and stderr
+sys.stdout = LogInterceptor(sys.__stdout__)
+sys.stderr = LogInterceptor(sys.__stderr__)
 
 class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
@@ -285,6 +314,38 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
             assessments = get_assessments()
             self.wfile.write(json.dumps(assessments).encode("utf-8"))
+            return
+
+        if parsed_path.path == "/api/logs":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            
+            # Retrieve lines from ring buffer or fallback to bot.log
+            lines = list(LOG_RING_BUFFER)
+            if len(lines) < 5:
+                log_file = os.path.join(os.path.dirname(__file__), "bot.log")
+                if os.path.exists(log_file):
+                    try:
+                        with open(log_file, "r", encoding="utf-8", errors="ignore") as lf:
+                            file_lines = [l.strip() for l in lf.readlines() if l.strip()]
+                            lines = file_lines[-70:]
+                    except Exception:
+                        pass
+            if not lines:
+                lines = [
+                    f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 Autonomous Engine Active (Target: 100% Online/Remote QA & Python)",
+                    f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ Background crawler loop running every 60 minutes. Listening for events..."
+                ]
+
+            payload = {
+                "status": "RUNNING",
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total_lines": len(lines),
+                "lines": lines[-70:]
+            }
+            self.wfile.write(json.dumps(payload).encode("utf-8"))
             return
 
         if parsed_path.path == "/export/applications.csv":
@@ -770,6 +831,22 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     </div>
                 </div>
 
+                <!-- LIVE REAL-TIME BOT ACTIVITY & STATUS LOGS -->
+                <div class="card" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; margin-bottom:25px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="display:inline-block; width:10px; height:10px; background:#22c55e; border-radius:50%; box-shadow:0 0 10px #22c55e;"></span>
+                            <h2 style="margin:0; color:#38bdf8; font-size:1.1rem; border:none; padding:0;">🖥️ Live Bot Activity & Status Logs</h2>
+                            <span style="background:#0369a1; color:#e0f2fe; font-size:0.75rem; padding:2px 8px; border-radius:4px; font-weight:600;">AUTONOMOUS (100% ONLINE / WFH)</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span id="logTimestamp" style="color:#94a3b8; font-size:0.8rem;">Auto-refreshing every 5s...</span>
+                            <button onclick="fetchLiveLogs()" style="background:#1e293b; color:#38bdf8; border:1px solid #38bdf8; border-radius:4px; padding:4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer;">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <pre id="logTerminal" style="font-family:'Courier New', Courier, monospace; font-size:0.84rem; line-height:1.45; color:#a7f3d0; background:#020617; padding:15px; border-radius:6px; height:220px; overflow-y:auto; margin-top:12px; white-space:pre-wrap; border:1px solid #1e293b; box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);">Connecting to live log stream...</pre>
+                </div>
+
                 <!-- PART 0: UPCOMING TESTS & ONLINE INTERVIEWS TRACKER -->
                 <div class="card card-alert">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #fee2e2; padding-bottom: 10px;">
@@ -1170,6 +1247,28 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                         row.style.display = (matchSearch && matchPlatform && matchStatus) ? '' : 'none';
                     }});
                 }}
+
+                function fetchLiveLogs() {{
+                    fetch('/api/logs')
+                        .then(res => res.json())
+                        .then(data => {{
+                            let term = document.getElementById('logTerminal');
+                            if (data.lines && data.lines.length > 0) {{
+                                term.innerText = data.lines.join('\\n');
+                                term.scrollTop = term.scrollHeight;
+                            }} else {{
+                                term.innerText = '[' + (data.timestamp || 'Now') + '] 🤖 Engine online and listening for events. Next autonomous crawl cycle scheduled.';
+                            }}
+                            if (data.timestamp) {{
+                                document.getElementById('logTimestamp').innerText = 'Updated at ' + data.timestamp.split(' ')[1];
+                            }}
+                        }})
+                        .catch(err => {{
+                            document.getElementById('logTerminal').innerText = '⚠️ Logs stream connecting...';
+                        }});
+                }}
+                fetchLiveLogs();
+                setInterval(fetchLiveLogs, 5000);
             </script>
         </body>
         </html>
