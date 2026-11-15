@@ -65,13 +65,20 @@ def evaluate_job_match(title: str, description: str, company: str, location: str
         "telecommute", "home-based", "anywhere", "worldwide", "remote / wfh"
     ]
     
-    # Check for hard on-site / in-office exclusions
+    # Check for hard on-site / in-office exclusions or foreign country-locked restrictions
     strict_onsite_flags = [
         "on-site only", "onsite only", "work from office only", "wfo only", 
         "strictly in-office", "no remote", "not a remote", "in-person only"
     ]
     if any(flag in full_text for flag in strict_onsite_flags):
         return 0.0, "Rejected: Explicitly on-site / in-office role (User policy: 100% Online / Remote Only)"
+
+    foreign_locked_flags = [
+        "glasgow", "scotland", "united kingdom only", "uk only", "us only",
+        "usa only", "eu only", "must reside in the us", "us citizen only", "uk.linkedin.com"
+    ]
+    if any(ff in full_text for ff in foreign_locked_flags):
+        return 0.0, "Rejected: Foreign country-locked role outside India / Worldwide Remote"
 
     is_online_remote = any(term in full_text for term in online_terms)
     if not is_online_remote:

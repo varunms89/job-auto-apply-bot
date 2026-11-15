@@ -101,13 +101,22 @@ class TestJobBot(unittest.TestCase):
         Best regards,
         Siemens Recruiting
         """
-        # test with auto_alert=False so we don't spam Telegram during unit test
-        result = process_email_message(subject, sender, body, auto_alert=False)
+        # test with auto_alert=False and persist_to_db=False so unit tests never pollute production DB
+        result = process_email_message(subject, sender, body, auto_alert=False, persist_to_db=False)
         self.assertIsNotNone(result)
         self.assertEqual(result["platform"], "HackerRank")
         self.assertIn("hackerrank.com", result["test_url"])
         self.assertIn("Siemens", result["company"])
-        print(f"\n[Test Email Assessment Parser] Detected: {result['company']} | {result['platform']} | {result['deadline_or_time']}")
+        self.assertNotIn("to  from", result["role_title"])
+        print(f"\n[Test Email Assessment Parser] Detected: {result['company']} | Role: {result['role_title']} | {result['platform']} | {result['deadline_or_time']}")
+
+    def test_foreign_country_locked_rejection(self):
+        title = "Software Developer Intern - 2027 Glasgow Summer R&D Internship"
+        desc = "LinkedIn Job at SAS in Glasgow, Scotland, United Kingdom (https://uk.linkedin.com/jobs/view/123)"
+        score, reasons = evaluate_job_match(title, desc, "SAS", "Glasgow, Scotland (Remote)")
+        self.assertEqual(score, 0.0)
+        self.assertIn("Foreign country-locked", reasons)
+        print(f"\n[Test Foreign Geo-Locked Rejection] Score: {score} | Filtered: {reasons}")
 
     def test_prep_assistant_modules(self):
         from prep_assistant import get_prep_module

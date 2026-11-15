@@ -412,10 +412,17 @@ def handle_voice_message(file_id: str, chat_id: str, audio_bytes: bytes = None, 
     return eval_res
 
 
+_LISTENER_RUNNING = False
+
+
 def run_telegram_listener():
     """
-    Long-polling loop for incoming Telegram bot messages (supports text & voice notes).
+    Singleton long-polling loop for incoming Telegram bot messages (supports text & voice notes).
     """
+    global _LISTENER_RUNNING
+    if _LISTENER_RUNNING:
+        return
+    _LISTENER_RUNNING = True
     offset = None
     print("🤖 Telegram Command Listener started (Listening for /status, /siemens, /interview, voice notes)...")
     

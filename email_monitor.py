@@ -118,10 +118,29 @@ def extract_company_name(subject: str, sender: str, body: str) -> str:
 
     return "Hiring Team"
 
-def process_email_message(subject: str, sender: str, body_text: str, auto_alert: bool = True) -> Optional[Dict[str, Any]]:
+def extract_role_title(subject: str, body: str, company: str) -> str:
+    """
+    Extracts a clean role title from the email body or subject without leaving dangling prepositions.
+    """
+    body_match = re.search(r'(?:for the|position of|role of|apply for)\s+([A-Za-z0-9\s/\-&]+?)\s+(?:role|position|internship|opening)', body, re.IGNORECASE)
+    if body_match:
+        candidate = body_match.group(1).strip()
+        if 3 <= len(candidate) <= 50:
+            return candidate
+
+    cleaned = re.sub(r'(?i)\b(invitation\s+to|invitation\s+for|invitation|online\s+assessment|technical\s+assessment|coding\s+test)\b', '', subject)
+    if company and company != "Hiring Team":
+        cleaned = re.sub(rf'(?i)\b(from|at|with|by)\s+{re.escape(company)}\b', '', cleaned)
+    cleaned = re.sub(r'^[\s\-:|,]+|[\s\-:|,]+$', '', cleaned).strip()
+    if not cleaned or cleaned.lower() in ("to", "from", "for", "at"):
+        return f"{classify_topic(subject + ' ' + body)} Role"
+    return cleaned
+
+
+def process_email_message(subject: str, sender: str, body_text: str, auto_alert: bool = True, persist_to_db: bool = True) -> Optional[Dict[str, Any]]:
     """
     Analyzes an email to see if it is a test invitation or interview session.
-    If matched, records it to the database and dispatches an instant Telegram alert.
+    If matched, records it to the database (when persist_to_db=True) and dispatches an instant Telegram alert.
     """
     combined = f"{subject} {body_text}".lower()
     
@@ -135,22 +154,24 @@ def process_email_message(subject: str, sender: str, body_text: str, auto_alert:
     company = extract_company_name(subject, sender, body_text)
     deadline = extract_deadline_or_time(body_text)
     topic = classify_topic(combined)
-    role_title = subject.replace("Online Assessment", "").replace("Invitation", "").strip() or "Candidate Assessment"
+    role_title = extract_role_title(subject, body_text, company)
     
     if not test_url:
         test_url = "https://mail.google.com"
 
-    # Save to database
-    assessment_id = record_assessment(
-        company=company,
-        role_title=role_title,
-        platform=platform or "Assessment Portal",
-        test_url=test_url,
-        deadline_or_time=deadline,
-        prep_topic=topic,
-        status="PENDING",
-        notes=f"Detected from email subject: {subject}"
-    )
+    # Save to database only when persist_to_db=True (avoids unit-test pollution)
+    assessment_id = 0
+    if persist_to_db:
+        assessment_id = record_assessment(
+            company=company,
+            role_title=role_title,
+            platform=platform or "Assessment Portal",
+            test_url=test_url,
+            deadline_or_time=deadline,
+            prep_topic=topic,
+            status="PENDING",
+            notes=f"Detected from email subject: {subject}"
+        )
 
     result = {
         "id": assessment_id,

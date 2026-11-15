@@ -72,13 +72,16 @@ def run_job_bot_cycle(auto_apply: bool = True):
     print(f"  - Applications Prepared/Processed: {applied_count}")
     print("==================================================================")
 
-    # Automatically dispatch report to Telegram
-    try:
-        from telegram_notifier import dispatch_report
-        print("\n📲 Dispatching cycle summary to Telegram...")
-        dispatch_report()
-    except Exception as e:
-        print(f"Telegram notice: {e}")
+    # Automatically dispatch report to Telegram only when new matching jobs are discovered
+    if applied_count > 0:
+        try:
+            from telegram_notifier import dispatch_report
+            print("\n📲 Dispatching new matches report to Telegram...")
+            dispatch_report()
+        except Exception as e:
+            print(f"Telegram notice: {e}")
+    else:
+        print("\nℹ️ No new matching listings in this cycle (skipping duplicate Telegram notification).")
 
 if __name__ == "__main__":
     run_job_bot_cycle(auto_apply=True)

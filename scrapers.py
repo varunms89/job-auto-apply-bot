@@ -140,29 +140,26 @@ def search_jobicy_jobs() -> List[Dict]:
 
 def search_linkedin_jobs() -> List[Dict]:
     """
-    Scrapes real-time Software Tester & QA jobs from LinkedIn for India & Remote.
+    Scrapes real-time Software Tester & QA Remote/WFH jobs from LinkedIn for India & Worldwide Remote.
+    Uses f_WT=2 (LinkedIn's strict Remote/Work-From-Home filter) and extracts actual card locations.
     """
     jobs = []
     queries = [
-        # Remote / Online Focused Queries (f_WT=2 is LinkedIn filter for Remote/Work From Home)
-        ("Software%20Tester", "Remote"),
-        ("QA%20Intern", "Remote"),
-        ("AI%20Intern", "Remote"),
-        ("Machine%20Learning%20Intern", "Remote"),
-        ("Python%20Intern", "Remote"),
-        ("Software%20Developer%20Intern", "Remote"),
-        # Regional Tech Hub Queries
+        # f_WT=2 forces LinkedIn to return strictly Remote / Work From Home listings
+        ("Software%20Tester", "India"),
+        ("QA%20Intern", "India"),
+        ("QA%20Engineer", "India"),
         ("AI%20Intern", "India"),
-        ("QA%20Intern", "Bengaluru"),
-        ("Software%20Tester", "Bengaluru"),
-        ("Machine%20Learning%20Intern", "Bengaluru")
+        ("Machine%20Learning%20Intern", "India"),
+        ("Python%20Intern", "India"),
+        ("Software%20Developer%20Intern", "India")
     ]
     
     linkedin_cookie = os.environ.get("LINKEDIN_LI_AT", "")
 
     for keyword, location in queries:
         try:
-            url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keyword}&location={location}&f_TPR=r86400&start=0"
+            url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keyword}&location={location}&f_WT=2&f_TPR=r86400&start=0"
             req_headers = {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             }
@@ -179,11 +176,17 @@ def search_linkedin_jobs() -> List[Dict]:
                     title_m = re.search(r'<h3 class=\"base-search-card__title\">[\s\n]*([^<]+)[\s\n]*</h3>', card)
                     link_m = re.search(r'href=\"(https://[a-z]+\.linkedin\.com/jobs/view/[^\"]+)\"', card)
                     company_m = re.search(r'<h4 class=\"base-search-card__subtitle\">[\s\S]*?</h4>', card)
+                    loc_m = re.search(r'<span class=\"job-search-card__location\">[\s\n]*([^<]+)[\s\n]*</span>', card)
                     
                     if title_m and link_m:
                         clean_title = title_m.group(1).strip()
                         clean_url = link_m.group(1).split('?')[0]
+                        # Skip foreign country-locked LinkedIn portals (e.g. uk.linkedin.com, de.linkedin.com)
+                        if not (clean_url.startswith("https://in.linkedin.com") or clean_url.startswith("https://www.linkedin.com")):
+                            continue
                         clean_company = re.sub(r'<[^>]+>', '', company_m.group(0)).strip() if company_m else "LinkedIn Company"
+                        actual_loc = loc_m.group(1).strip() if loc_m else location
+                        remote_loc = f"{actual_loc} (Remote / WFH)"
                         job_id = f"li_{re.sub(r'[^0-9]', '', clean_url)[-12:] or abs(hash(clean_url))}"
 
                         jobs.append({
@@ -191,9 +194,9 @@ def search_linkedin_jobs() -> List[Dict]:
                             "platform": "LinkedIn",
                             "title": clean_title,
                             "company": clean_company,
-                            "location": location,
+                            "location": remote_loc,
                             "url": clean_url,
-                            "description": f"LinkedIn Job: {clean_title} at {clean_company} in {location}. Direct link: {clean_url}"
+                            "description": f"LinkedIn Remote Job (f_WT=2): {clean_title} at {clean_company} ({remote_loc}). Direct link: {clean_url}"
                         })
         except Exception as e:
             print(f"[LinkedIn Scraper] Notice for {keyword}/{location}: {e}")
@@ -202,14 +205,13 @@ def search_linkedin_jobs() -> List[Dict]:
 
 def search_internshala_internships() -> List[Dict]:
     """
-    Scrapes high-volume Indian online/remote internships from Internshala
-    for AI, Python, Software Testing / QA, and Bangalore tech internships.
+    Scrapes strictly Work From Home (WFH) / Online Indian internships from Internshala
+    for AI, Python, and Software Testing / QA.
     """
     categories = [
-        ("work-from-home-artificial-intelligence-ai-internships", "Artificial Intelligence Intern", "Work From Home / Remote"),
-        ("work-from-home-software-testing-internships", "Software Tester / QA Intern", "Work From Home / Remote"),
-        ("work-from-home-python-django-internships", "Python Developer Intern", "Work From Home / Remote"),
-        ("computer-science-internship-in-bangalore", "CS / Software Intern", "Bangalore, India")
+        ("work-from-home-artificial-intelligence-ai-internships", "Artificial Intelligence Intern", "Work From Home"),
+        ("work-from-home-software-testing-internships", "Software Tester / QA Intern", "Work From Home"),
+        ("work-from-home-python-django-internships", "Python Developer Intern", "Work From Home")
     ]
     jobs = []
     headers = {
@@ -252,7 +254,7 @@ def search_internshala_internships() -> List[Dict]:
                         num_id = re.sub(r'[^0-9]', '', clean_href)[-10:] or abs(hash(full_url))
                         job_id = f"internshala_{num_id}"
 
-                        desc = f"Internshala Internship: {title} at {company}. Location: {loc}. Online WFH student internship. Apply directly: {full_url}"
+                        desc = f"Internshala Internship: {title} at {company}. Location: {loc}. Apply directly: {full_url}"
 
                         jobs.append({
                             "job_id": job_id,

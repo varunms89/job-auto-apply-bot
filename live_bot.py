@@ -1,8 +1,11 @@
 import time
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from main import run_job_bot_cycle
+
+# Indian Standard Time (UTC+05:30) so Render Cloud triggers at exact IST hours
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # Interval between auto-apply scans (in seconds)
 # e.g., 3600 seconds = 1 hour
@@ -30,8 +33,8 @@ def run_continuous_live_bot():
     last_wrapup_date = None
     while True:
         try:
-            now = datetime.now()
-            # Daily Morning Briefing at 9:00 AM
+            now = datetime.now(IST)
+            # Daily Morning Briefing at 9:00 AM IST
             if now.hour == 9 and last_briefing_date != now.date():
                 try:
                     from telegram_notifier import send_morning_briefing

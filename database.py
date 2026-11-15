@@ -265,6 +265,16 @@ def record_assessment(company: str, role_title: str, platform: str, test_url: st
     conn = get_connection()
     cursor = conn.cursor()
     ph = "%s" if is_pg(conn) else "?"
+
+    # Deduplicate by test_url (if specific) or (company, role_title)
+    if test_url and test_url != "https://mail.google.com":
+        cursor.execute(f"SELECT id FROM assessments WHERE test_url = {ph} LIMIT 1", (test_url,))
+    else:
+        cursor.execute(f"SELECT id FROM assessments WHERE company = {ph} AND role_title = {ph} LIMIT 1", (company, role_title))
+    existing = cursor.fetchone()
+    if existing:
+        conn.close()
+        return existing[0]
     
     if is_pg(conn):
         cursor.execute(f"""
