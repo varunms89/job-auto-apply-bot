@@ -67,7 +67,8 @@ def send_telegram_message(text: str, token: str = None, chat_id: str = None, rep
 
 def generate_live_report() -> str:
     """
-    Pulls recent application records from Postgres/SQLite and formats a clean Telegram report.
+    Pulls recent application records from Postgres/SQLite and formats a clean Telegram report
+    separating Auto-Applied Online Internships from Referred Full-Time Jobs.
     """
     conn = get_connection()
     cur = conn.cursor()
@@ -76,40 +77,60 @@ def generate_live_report() -> str:
     total_scanned = cur.fetchone()[0]
 
     cur.execute("SELECT count(*) FROM jobs WHERE status IN ('APPLIED_READY', 'APPLIED', 'SUBMITTED')")
-    total_applied = cur.fetchone()[0]
+    total_internships_applied = cur.fetchone()[0]
+
+    cur.execute("SELECT count(*) FROM jobs WHERE status = 'REFERRED'")
+    total_jobs_referred = cur.fetchone()[0]
 
     cur.execute("""
         SELECT title, company, match_score, url 
         FROM jobs 
         WHERE status IN ('APPLIED_READY', 'APPLIED', 'SUBMITTED')
-        ORDER BY match_score DESC, id DESC 
-        LIMIT 6
+        ORDER BY id DESC 
+        LIMIT 4
     """)
-    top_jobs = cur.fetchall()
+    recent_internships = cur.fetchall()
+
+    cur.execute("""
+        SELECT title, company, match_score, url 
+        FROM jobs 
+        WHERE status = 'REFERRED'
+        ORDER BY id DESC 
+        LIMIT 4
+    """)
+    recent_referred_jobs = cur.fetchall()
     conn.close()
 
     report = (
-        f"🤖 <b>JOB AUTO-APPLY BOT REPORT</b>\n"
+        f"🤖 <b>INTERNSHIP AUTO-APPLY & JOB REFERRAL REPORT</b>\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 <b>Candidate:</b> {USER_CONFIG.name}\n"
-        f"🎓 <b>Profile:</b> BCA Final Year (2025)\n"
-        f"🎯 <b>Target:</b> Software Tester / QA Roles\n\n"
-        f"📊 <b>Summary:</b>\n"
-        f"• Total Listings Scanned: <b>{total_scanned}</b>\n"
-        f"• Applications Processed: <b>{total_applied}</b>\n\n"
-        f"🚀 <b>Recent Top Matches Applied:</b>\n"
+        f"👤 <b>Candidate:</b> {USER_CONFIG.name} (BCA 2025)\n"
+        f"🎯 <b>Policy:</b> Auto-Apply Internships | Refer Full-Time Jobs\n\n"
+        f"📊 <b>Pipeline Summary:</b>\n"
+        f"• 🎓 <b>Online Internships Auto-Applied:</b> <code>{total_internships_applied}</code>\n"
+        f"• 💼 <b>Full-Time Jobs Referred to You:</b> <code>{total_jobs_referred}</code>\n"
+        f"• 🔍 <b>Total Listings Scanned:</b> <code>{total_scanned}</code>\n"
     )
 
-    for idx, (title, comp, score, url) in enumerate(top_jobs, 1):
-        report += (
-            f"\n{idx}. <b>{title}</b>\n"
-            f"   🏢 {comp} | ⭐️ Score: <code>{score}/100</code>\n"
-            f"   👉 <a href='{url}'><b>TAP TO VIEW & APPLY ↗</b></a>\n"
-        )
+    if recent_internships:
+        report += "\n🎓 <b>Recent Internships Auto-Applied:</b>\n"
+        for idx, (title, comp, score, url) in enumerate(recent_internships, 1):
+            report += (
+                f"{idx}. <b>{title}</b> ({comp} | <code>{score}/100</code>)\n"
+                f"   ✅ <i>Auto-Applied</i> — <a href='{url}'>View Listing ↗</a>\n"
+            )
+
+    if recent_referred_jobs:
+        report += "\n💼 <b>Full-Time Jobs Referred to You (Tap to Apply):</b>\n"
+        for idx, (title, comp, score, url) in enumerate(recent_referred_jobs, 1):
+            report += (
+                f"{idx}. <b>{title}</b> ({comp} | <code>{score}/100</code>)\n"
+                f"   👉 <a href='{url}'><b>TAP TO REVIEW & APPLY ↗</b></a>\n"
+            )
 
     report += (
         f"\n━━━━━━━━━━━━━━━━━━━\n"
-        f"✅ <i>Bot is actively monitoring for new openings.</i>"
+        f"✅ <i>Internships are auto-submitted; full-time jobs are referred for your 1-click review.</i>"
     )
     return report
 

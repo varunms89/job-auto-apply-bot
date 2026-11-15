@@ -86,12 +86,12 @@ def init_db():
             CREATE OR REPLACE VIEW submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, applied_at, created_at
             FROM jobs
-            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
+            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'REFERRED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
 
             CREATE OR REPLACE VIEW not_submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, created_at
             FROM jobs
-            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
+            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'REFERRED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
         """)
     else:
         # SQLite schema
@@ -150,13 +150,13 @@ def init_db():
             CREATE VIEW IF NOT EXISTS submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, applied_at, created_at
             FROM jobs
-            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
+            WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'REFERRED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
         """)
         cursor.execute("""
             CREATE VIEW IF NOT EXISTS not_submitted_jobs AS
             SELECT id, job_id, platform, title, company, location, url, match_score, match_reasons, status, created_at
             FROM jobs
-            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
+            WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'REFERRED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED');
         """)
     conn.commit()
     conn.close()

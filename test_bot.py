@@ -270,7 +270,11 @@ class TestJobBot(unittest.TestCase):
         payload = engine.prepare_application_payload({"title": "QA Testing Intern", "company": "TechStartup"})
         self.assertIn("100% Online / Remote / Work From Home", payload["cover_letter"])
         self.assertIn("assessment_answer", payload)
-        print("\n[Test Online Internship Auto-Apply Engine] Verified email extraction, Internshala Playwright payload, and WFH cover letter.")
+        # Verify Internship vs Full-Time Job Referral classification
+        self.assertTrue(engine.is_internship_role({"title": "Software QA Intern", "platform": "LinkedIn", "url": "https://linkedin.com/jobs/1"}))
+        self.assertTrue(engine.is_internship_role({"title": "Python Developer", "platform": "Internshala", "url": "https://internshala.com/internship/detail/1"}))
+        self.assertFalse(engine.is_internship_role({"title": "Software Test Engineer", "platform": "LinkedIn", "url": "https://linkedin.com/jobs/2"}))
+        print("\n[Test Online Internship Auto-Apply vs Job Referral] Verified Internships -> Auto-Apply & Full-Time Jobs -> Referred.")
 
 if __name__ == "__main__":
     unittest.main()

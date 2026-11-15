@@ -126,8 +126,9 @@ def handle_command(text: str, chat_id: str):
     elif cmd.startswith("/status") or "status" in cmd or "📊" in text:
         stats = get_job_stats()
         submitted = stats.get("SUBMITTED", 0) + stats.get("APPLIED", 0) + stats.get("APPLIED_READY", 0)
+        referred = stats.get("REFERRED", 0)
         total = sum(stats.values())
-        unsubmitted = total - submitted
+        unsubmitted = total - submitted - referred
 
         assessments = get_assessments()
         pending_tests = [a for a in assessments if a.get("status") == "PENDING"]
@@ -135,12 +136,13 @@ def handle_command(text: str, chat_id: str):
         msg = (
             "📊 <b>LIVE SYSTEM STATUS REPORT</b>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
-            f"✅ <b>Submitted Applications:</b> <code>{submitted}</code>\n"
-            f"⏳ <b>Evaluated / Filtered:</b> <code>{unsubmitted}</code>\n"
+            f"🎓 <b>Internships Auto-Applied:</b> <code>{submitted}</code>\n"
+            f"💼 <b>Full-Time Jobs Referred:</b> <code>{referred}</code>\n"
+            f"⏳ <b>Evaluated / Filtered Out:</b> <code>{unsubmitted}</code>\n"
             f"📈 <b>Total Listings Scanned:</b> <code>{total}</code>\n"
             f"🚨 <b>Pending Tests / Sessions:</b> <code>{len(pending_tests)}</code>\n\n"
             "🌐 <b>Cloud Dashboard:</b> <a href='https://job-auto-apply-bot.onrender.com'>Open Dashboard</a>\n"
-            "💻 <b>Mode:</b> 100% Autonomous (Online/Remote Preference)"
+            "💻 <b>Mode:</b> Auto-Apply Internships | Refer Full-Time Jobs"
         )
         send_telegram_message(msg, chat_id=chat_id)
 

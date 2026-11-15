@@ -21,6 +21,7 @@ START_TIME = time.time()
 DEFAULT_SETTINGS = {
     "bot_enabled": True,
     "auto_apply_enabled": True,
+    "auto_apply_internships_only": True,
     "strict_remote_only": True,
     "min_match_score": 35.0,
     "scan_interval_minutes": 60,
@@ -74,7 +75,7 @@ def load_bot_settings() -> Dict[str, Any]:
 def save_bot_settings(new_data: Dict[str, Any]) -> Dict[str, Any]:
     current = load_bot_settings()
     for key in [
-        "bot_enabled", "auto_apply_enabled", "strict_remote_only",
+        "bot_enabled", "auto_apply_enabled", "auto_apply_internships_only", "strict_remote_only",
         "telegram_reports_only_on_new", "candidate_name", "candidate_email",
         "candidate_phone", "candidate_github", "candidate_linkedin",
         "internshala_cookie", "smtp_password"
@@ -151,6 +152,7 @@ def get_admin_overview() -> Dict[str, Any]:
     conn.close()
 
     submitted = stats.get("SUBMITTED", 0) + stats.get("APPLIED", 0) + stats.get("APPLIED_READY", 0)
+    referred = stats.get("REFERRED", 0)
     interviewing = stats.get("INTERVIEWING", 0) + stats.get("TEST_GIVEN", 0) + stats.get("OFFERED", 0)
     total_jobs = sum(stats.values())
     uptime_mins = int((time.time() - START_TIME) // 60)
@@ -170,6 +172,7 @@ def get_admin_overview() -> Dict[str, Any]:
         "metrics": {
             "total_jobs": total_jobs,
             "submitted_count": submitted,
+            "referred_count": referred,
             "interviewing_count": interviewing,
             "rejected_zero_score": zero_score_count,
             "starred_count": starred_count,
@@ -358,14 +361,14 @@ def render_admin_dashboard_html() -> str:
                 <div class="sub">Across 8 Job Portals</div>
             </div>
             <div class="kpi-card">
-                <div class="label">Submitted / Processed</div>
+                <div class="label">🎓 Auto-Applied Internships</div>
                 <div class="val" id="kpiSubmitted" style="color:#4ade80;">0</div>
-                <div class="sub">100% Online / Remote Matches</div>
+                <div class="sub">100% Online / WFH Internships</div>
             </div>
             <div class="kpi-card">
-                <div class="label">Starred / Shortlisted</div>
-                <div class="val" id="kpiStarred" style="color:#fde047;">0</div>
-                <div class="sub">Priority Applications</div>
+                <div class="label">💼 Referred Full-Time Jobs</div>
+                <div class="val" id="kpiReferred" style="color:#38bdf8;">0</div>
+                <div class="sub">Referred to You (Manual Apply)</div>
             </div>
             <div class="kpi-card">
                 <div class="label">Rejected (0-Score Clutter)</div>
@@ -546,7 +549,9 @@ def render_admin_dashboard_html() -> str:
 
                     document.getElementById('kpiTotal').innerText = m.total_jobs || 0;
                     document.getElementById('kpiSubmitted').innerText = m.submitted_count || 0;
-                    document.getElementById('kpiStarred').innerText = m.starred_count || 0;
+                    if (document.getElementById('kpiReferred')) {
+                        document.getElementById('kpiReferred').innerText = m.referred_count || 0;
+                    }
                     document.getElementById('kpiRejected').innerText = m.rejected_zero_score || 0;
                     document.getElementById('kpiAssessments').innerText = m.pending_assessments || 0;
 
@@ -605,7 +610,7 @@ def render_admin_dashboard_html() -> str:
                             <td style="font-weight:700; color:${j.match_score >= 35 ? '#4ade80' : '#94a3b8'};">${j.match_score}</td>
                             <td>
                                 <select onchange="updateJobStatus(${j.id}, this.value)" style="padding:4px 8px; font-size:0.78rem; width:auto;">
-                                    ${['DISCOVERED','SUBMITTED','TEST_GIVEN','INTERVIEWING','OFFERED','REJECTED'].map(s => `<option value="${s}" ${j.status===s?'selected':''}>${s}</option>`).join('')}
+                                    ${['DISCOVERED','SUBMITTED','REFERRED','TEST_GIVEN','INTERVIEWING','OFFERED','REJECTED'].map(s => `<option value="${s}" ${j.status===s?'selected':''}>${s}</option>`).join('')}
                                 </select>
                             </td>
                             <td>

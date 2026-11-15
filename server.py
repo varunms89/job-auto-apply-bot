@@ -1231,20 +1231,20 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             conn = get_connection()
             cur = conn.cursor()
             
-            # 1. Submitted Jobs (including all pipeline stages, starred first)
+            # 1. Submitted Internships & Referred Full-Time Jobs (starred first)
             cur.execute("""
                 SELECT id, title, company, platform, location, match_score, status, url, starred 
                 FROM jobs 
-                WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
+                WHERE status IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'REFERRED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
                 ORDER BY starred DESC, id DESC
             """)
             submitted_jobs = cur.fetchall()
 
-            # 2. Not Submitted (Discovered)
+            # 2. Not Submitted (Discovered / Filtered)
             cur.execute("""
                 SELECT id, title, company, platform, location, match_score, match_reasons, url 
                 FROM jobs 
-                WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
+                WHERE status NOT IN ('APPLIED', 'APPLIED_READY', 'SUBMITTED', 'REFERRED', 'TEST_GIVEN', 'INTERVIEWING', 'OFFERED', 'REJECTED') 
                 ORDER BY id DESC LIMIT 25
             """)
             not_submitted_jobs = cur.fetchall()
@@ -1266,6 +1266,8 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
         pending_tests = [a for a in assessments if a["status"] == "PENDING"]
         completed_tests = [a for a in assessments if a["status"] == "COMPLETED"]
         active_interviews = len([r for r in submitted_jobs if r[6] in ('INTERVIEWING', 'OFFERED')])
+        auto_applied_internships = len([r for r in submitted_jobs if r[6] in ('SUBMITTED', 'APPLIED', 'APPLIED_READY')])
+        referred_fulltime_jobs = len([r for r in submitted_jobs if r[6] == 'REFERRED'])
 
         # Build Pending Tests Table Rows
         from telegram_notifier import make_google_calendar_url
@@ -1275,7 +1277,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             test_rows.append(f"<tr><td><b>{a['company']}</b></td><td>{a['role_title']}</td><td><span class='badge-platform'>{a['platform']}</span></td><td><b>{a['deadline_or_time']}</b></td><td><code>{a['prep_topic']}</code></td><td><a href='{a['test_url']}' target='_blank' class='btn-take'>Start Test / Join ↗</a> <a href='{cal_link}' target='_blank' style='background:#0f172a; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.82rem; font-weight:600; display:inline-block; margin-left:4px;' title='Add deadline to Google Calendar'>📅 Calendar</a></td><td><form method='POST' action='/api/assessments/complete' style='display:inline;'><input type='hidden' name='id' value='{a['id']}'><button type='submit' class='btn-complete'>Mark Done ✓</button></form></td></tr>")
         tests_rows_html = "".join(test_rows) if test_rows else "<tr><td colspan='7' style='text-align:center; color:#64748b; padding:15px;'>No pending test invites right now. Auto-detected email invites or manual additions will appear here instantly!</td></tr>"
 
-        # Build Submitted Jobs Table Rows
+        # Build Submitted Internships & Referred Jobs Table Rows
         submitted_rows = []
         for idx, r in enumerate(submitted_jobs, 1):
             jid, title, comp, plat, loc, score, status, url, starred = r
@@ -1283,28 +1285,34 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             title_clean = str(title).replace('"', '').replace("'", "")
             star_icon = "⭐" if starred else "☆"
             sub_sel = "selected" if status in ('SUBMITTED', 'APPLIED', 'APPLIED_READY') else ""
+            ref_sel = "selected" if status == 'REFERRED' else ""
             tg_sel = "selected" if status == 'TEST_GIVEN' else ""
             int_sel = "selected" if status == 'INTERVIEWING' else ""
             off_sel = "selected" if status == 'OFFERED' else ""
             rej_sel = "selected" if status == 'REJECTED' else ""
+            if status == 'REFERRED':
+                type_badge = "<span style='display:inline-block; margin-top:3px; background:#dbeafe; color:#1e40af; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:700;'>💼 FULL-TIME JOB (REFERRED TO YOU)</span>"
+            else:
+                type_badge = "<span style='display:inline-block; margin-top:3px; background:#dcfce7; color:#166534; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:700;'>🎓 INTERNSHIP (AUTO-APPLIED)</span>"
             submitted_rows.append(f"""
                 <tr>
                     <td style='text-align:center;'><button onclick='toggleStar({jid}, this)' style='background:none; border:none; cursor:pointer; font-size:1.15rem; padding:0;' title='Pin to Top as Dream Company'>{star_icon}</button></td>
                     <td>{idx}</td>
-                    <td><b>{title}</b></td>
+                    <td><b>{title}</b><br>{type_badge}</td>
                     <td>{comp}</td>
                     <td>{plat}</td>
                     <td><b>{score}/100</b></td>
                     <td>
                         <select class='status-select' onchange='changeJobStatus({jid}, this.value)'>
-                            <option value='SUBMITTED' {sub_sel}>SUBMITTED</option>
+                            <option value='SUBMITTED' {sub_sel}>🎓 AUTO-APPLIED (INTERNSHIP)</option>
+                            <option value='REFERRED' {ref_sel}>💼 REFERRED JOB (APPLY NOW)</option>
                             <option value='TEST_GIVEN' {tg_sel}>TEST GIVEN</option>
                             <option value='INTERVIEWING' {int_sel}>INTERVIEWING</option>
                             <option value='OFFERED' {off_sel}>OFFERED</option>
                             <option value='REJECTED' {rej_sel}>REJECTED</option>
                         </select>
                     </td>
-                    <td><a href='{url}' target='_blank'>View Job ↗</a></td>
+                    <td><a href='{url}' target='_blank'>View / Apply ↗</a></td>
                     <td>
                         <button class='btn-take' style='background:#0284c7; cursor:pointer; border:none;' onclick='openOutreach("{comp_clean}", "{title_clean}")'>✉️ Outreach</button>
                         <button class='btn-take' style='background:#10b981; cursor:pointer; border:none; margin-left:4px;' onclick='openFollowUp("{comp_clean}", "{title_clean}")' title='Send a 3-sentence recruiter follow-up'>📬 Follow-Up</button>
@@ -1389,8 +1397,12 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                         <div style="font-size: 1.8rem; font-weight: bold; color: #dc2626; margin-top: 5px;">{len(pending_tests)}</div>
                     </div>
                     <div class="stat-card green">
-                        <div style="color: #64748b; font-size: 0.85rem;">SUBMITTED APPLICATIONS</div>
-                        <div style="font-size: 1.8rem; font-weight: bold; color: #15803d; margin-top: 5px;">{len(submitted_jobs)}</div>
+                        <div style="color: #64748b; font-size: 0.85rem;">🎓 AUTO-APPLIED INTERNSHIPS</div>
+                        <div style="font-size: 1.8rem; font-weight: bold; color: #15803d; margin-top: 5px;">{auto_applied_internships}</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color:#0284c7;">
+                        <div style="color: #64748b; font-size: 0.85rem;">💼 REFERRED FULL-TIME JOBS</div>
+                        <div style="font-size: 1.8rem; font-weight: bold; color: #0284c7; margin-top: 5px;">{referred_fulltime_jobs}</div>
                     </div>
                     <div class="stat-card purple">
                         <div style="color: #64748b; font-size: 0.85rem;">INTERVIEWS & OFFERS</div>
@@ -1484,8 +1496,9 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                         </select>
                         <select id="statusFilter" onchange="filterSubmittedJobs()" style="flex:1; min-width:140px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; background:white;">
                             <option value="">All Pipeline Statuses</option>
-                            <option value="SUBMITTED">SUBMITTED</option>
-                            <option value="TEST_GIVEN">TEST GIVEN</option>
+                            <option value="AUTO-APPLIED">🎓 Auto-Applied Internships</option>
+                            <option value="REFERRED">💼 Referred Full-Time Jobs</option>
+                            <option value="TEST GIVEN">TEST GIVEN</option>
                             <option value="INTERVIEWING">INTERVIEWING</option>
                             <option value="OFFERED">OFFERED</option>
                             <option value="REJECTED">REJECTED</option>

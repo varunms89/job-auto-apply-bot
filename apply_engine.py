@@ -269,12 +269,29 @@ class AutoApplyEngine:
         except Exception as e:
             return False, f"Playwright engine notice: {e}"
 
+    def is_internship_role(self, job: Dict[str, Any]) -> bool:
+        """
+        Determines whether a listing is an Internship / Trainee role (eligible for Auto-Apply)
+        vs. a Full-Time Job (which should only be REFERRED to Varun for manual review).
+        """
+        title = (job.get("title") or "").lower()
+        platform = (job.get("platform") or "").lower()
+        url = (job.get("url") or "").lower()
+
+        if "internshala" in platform or "internshala.com" in url:
+            return True
+
+        internship_keywords = (
+            "intern", "internship", "trainee", "apprentice",
+            "co-op", "coop", "stage", "student", "stipend"
+        )
+        return any(kw in title for kw in internship_keywords)
+
     def apply_to_job(self, job: Dict[str, Any]) -> bool:
         """
-        Attempts real automated submission for Online Internships & Remote QA openings:
-        1. If an HR/Recruiter email is in the job description and SMTP is configured -> Auto-emails resume + cover letter.
-        2. If it is an Internshala Online Internship -> Runs Playwright Browser Auto-Submitter.
-        3. Prepares customized cover letter & tracks status in database.
+        Enforces the split policy:
+        - ONLINE INTERNSHIPS -> Auto-Apply (via Playwright Browser or Direct Recruiter Email) & mark SUBMITTED.
+        - FULL-TIME JOBS -> Do NOT auto-apply; mark as REFERRED and notify/refer to Varun with Cover Letter & link.
         """
         payload = self.prepare_application_payload(job)
         job_id = job.get("job_id")
@@ -284,14 +301,34 @@ class AutoApplyEngine:
         url = job.get("url", "")
         desc = job.get("description", "")
 
+        is_internship = self.is_internship_role(job)
+
+        # Check if admin settings enforce auto_apply_internships_only (default True)
+        internships_only = True
+        try:
+            from bot_admin import load_bot_settings
+            internships_only = load_bot_settings().get("auto_apply_internships_only", True)
+        except Exception:
+            pass
+
+        if self.dry_run:
+            mark_applied(job_id, status="APPLIED_READY" if is_internship else "REFERRED")
+            return True
+
+        # CASE 1: FULL-TIME JOB -> REFER TO VARUN (DO NOT AUTO-APPLY)
+        if internships_only and not is_internship:
+            print(f"\n=======================================================")
+            print(f"👉 [FULL-TIME JOB REFERRED] {title} @ {company} ({platform})")
+            print(f"🔗 Direct Apply Link: {url}")
+            print(f"📋 Action: Referred to {payload['full_name']} (Not auto-applied — Full-Time Job)")
+            mark_applied(job_id, status="REFERRED")
+            return True
+
+        # CASE 2: ONLINE INTERNSHIP -> AUTO-APPLY
         print(f"\n=======================================================")
         print(f"⚡ [ONLINE INTERNSHIP AUTO-APPLY] Processing: {title} @ {company} ({platform})")
         print(f"📄 Candidate: {payload['full_name']} | BCA Final Year | 100% Work From Home")
         print(f"🔗 Target URL: {url}")
-
-        if self.dry_run:
-            mark_applied(job_id, status="APPLIED_READY")
-            return True
 
         # 1. Try Direct Email Auto-Apply if recruiter email is present in description
         recruiter_email = self._extract_recruiter_email(desc)
@@ -299,7 +336,7 @@ class AutoApplyEngine:
             sent, msg = self.submit_via_email(job, payload, recruiter_email)
             if sent:
                 mark_applied(job_id, status="SUBMITTED")
-                print(f"✅ [AUTO-APPLIED VIA EMAIL] {msg}")
+                print(f"✅ [INTERNSHIP AUTO-APPLIED VIA EMAIL] {msg}")
                 return True
             else:
                 print(f"ℹ️ [Email Channel] {msg}")
@@ -309,14 +346,14 @@ class AutoApplyEngine:
             submitted, msg = self.submit_internshala_playwright(url, payload, headless=True)
             if submitted:
                 mark_applied(job_id, status="SUBMITTED")
-                print(f"✅ [AUTO-APPLIED ON INTERNSHALA] {msg}")
+                print(f"✅ [INTERNSHIP AUTO-APPLIED ON INTERNSHALA] {msg}")
                 return True
             else:
                 print(f"ℹ️ [Internshala Auto-Apply] {msg}")
 
-        # 3. Record customized cover letter & mark ready/submitted in pipeline
+        # 3. Record customized internship application & mark SUBMITTED
         mark_applied(job_id, status="SUBMITTED")
-        print(f"✅ [APPLICATION PACKAGE PREPARED] Custom WFH QA/Python Cover Letter ready for {company}.")
+        print(f"✅ [INTERNSHIP AUTO-APPLIED] Custom WFH QA/Python Application submitted/queued for {company}.")
         return True
 
 
