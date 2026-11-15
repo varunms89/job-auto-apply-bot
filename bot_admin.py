@@ -76,7 +76,8 @@ def save_bot_settings(new_data: Dict[str, Any]) -> Dict[str, Any]:
     for key in [
         "bot_enabled", "auto_apply_enabled", "strict_remote_only",
         "telegram_reports_only_on_new", "candidate_name", "candidate_email",
-        "candidate_phone", "candidate_github", "candidate_linkedin"
+        "candidate_phone", "candidate_github", "candidate_linkedin",
+        "internshala_cookie", "smtp_password"
     ]:
         if key in new_data:
             current[key] = new_data[key]
@@ -382,14 +383,16 @@ def render_admin_dashboard_html() -> str:
             <!-- Left Column: Engine Triggers & Configuration -->
             <div>
                 <div class="panel">
-                    <h2>⚡ Instant Engine Controls & Manual Triggers</h2>
+                    <h2>⚡ Instant Engine Controls & Online Internship Auto-Apply</h2>
                     <div class="btn-grid">
                         <button class="btn btn-primary" onclick="triggerAction('scan')">🔄 Run Job Scan Cycle Now</button>
+                        <button class="btn btn-success" onclick="triggerAction('batch_apply_internships')">🚀 Auto-Apply Online Internships</button>
+                        <button class="btn btn-warning" onclick="triggerAction('login_internshala')">🔑 Login to Internshala (Browser)</button>
                         <button class="btn btn-success" onclick="triggerAction('telegram_report')">📲 Send Status to Telegram</button>
                         <button class="btn btn-slate" onclick="triggerAction('morning_briefing')">🌅 Send Morning Briefing</button>
                         <button class="btn btn-slate" onclick="triggerAction('evening_wrapup')">🌙 Send Evening Wrap-Up</button>
                         <button class="btn btn-slate" onclick="triggerAction('scan_email')">📧 Scan Gmail Inbox (IMAP)</button>
-                        <button class="btn btn-slate" onclick="triggerAction('run_tests')">🧪 Run 20 CI Tests & Report</button>
+                        <button class="btn btn-slate" onclick="triggerAction('run_tests')">🧪 Run 21 CI Tests & Report</button>
                     </div>
                 </div>
 

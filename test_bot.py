@@ -263,5 +263,14 @@ class TestJobBot(unittest.TestCase):
         self.assertIn("Bot Administration & Management Console", html)
         print("\n[Test Bot Admin Console] Verified /admin overview API, dynamic settings persistence, and dashboard UI.")
 
+    def test_online_internship_auto_apply_engine(self):
+        engine = AutoApplyEngine(dry_run=True)
+        email_found = engine._extract_recruiter_email("Send your resume to hiring@techstartup.io for the WFH QA Intern role.")
+        self.assertEqual(email_found, "hiring@techstartup.io")
+        payload = engine.prepare_application_payload({"title": "QA Testing Intern", "company": "TechStartup"})
+        self.assertIn("100% Online / Remote / Work From Home", payload["cover_letter"])
+        self.assertIn("assessment_answer", payload)
+        print("\n[Test Online Internship Auto-Apply Engine] Verified email extraction, Internshala Playwright payload, and WFH cover letter.")
+
 if __name__ == "__main__":
     unittest.main()

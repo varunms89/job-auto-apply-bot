@@ -373,6 +373,12 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
                 if act == "scan":
                     res = trigger_immediate_scan_async()
+                elif act == "batch_apply_internships":
+                    from apply_engine import batch_auto_apply_online_internships
+                    res = batch_auto_apply_online_internships(limit=10)
+                elif act == "login_internshala":
+                    from apply_engine import launch_interactive_portal_login
+                    res = launch_interactive_portal_login()
                 elif act == "telegram_report":
                     from telegram_notifier import dispatch_report
                     dispatch_report()
