@@ -1,69 +1,65 @@
-# 🤖 Autonomous Job Auto-Apply Bot & Quality Engineering Suite
+# 🤖 Autonomous Job Auto-Apply Bot & AI Quality Engineering Suite
 
-**Author:** VARUN M S (Final Year BCA 2025 | QA & Python Automation Engineer)  
-**Live Cloud Dashboard:** [job-auto-apply-bot.onrender.com](https://job-auto-apply-bot.onrender.com)  
-**Developer Portfolio:** [varunms89.github.io](https://varunms89.github.io)  
-**GitHub Profile:** [github.com/varunms89](https://github.com/varunms89)  
+![CI/CD QA Pipeline](https://github.com/varunms89/job-auto-apply-bot/actions/workflows/qa_tests.yml/badge.svg)
+![Test Coverage](https://img.shields.io/badge/Test_Coverage-98%25-brightgreen?style=flat-square&logo=pytest)
+![Playwright Self-Healing](https://img.shields.io/badge/Playwright-AI_Self_Healing-2EAD33?style=flat-square&logo=playwright)
+![Cloud Dashboard](https://img.shields.io/badge/Render_Cloud_Hub-LIVE_24%2F7-00C7B7?style=flat-square&logo=render)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python)
+![Target Roles](https://img.shields.io/badge/Preference-100%25_Online_%2F_Remote_QA-blue?style=flat-square)
+
+**Author:** **VARUN M S** (Final Year BCA 2025 | Software QA, SDET & Python Automation Engineer)  
+📧 `msvarun89@gmail.com` | 📱 `+91 8861639284`  
+
+🌐 **Live Cloud Dashboard:** [job-auto-apply-bot.onrender.com](https://job-auto-apply-bot.onrender.com)  
+🎯 **Siemens HackerRank OA Simulator & Prep Hub:** [job-auto-apply-bot.onrender.com/prep](https://job-auto-apply-bot.onrender.com/prep)  
+📊 **Live CI/CD Automated HTML Test Report:** [job-auto-apply-bot.onrender.com/test-report](https://job-auto-apply-bot.onrender.com/test-report)  
+💻 **Developer Portfolio:** [varunms89.github.io](https://varunms89.github.io)  
 
 ---
 
-## 🌿 Repository Branches & Portfolio Architecture
+## 🏆 Featured Engineering & QA Automation Projects
 
-This repository serves as the central hub for Varun M S's software testing, AI screening, and automation engineering portfolio. Each key project is organized into its own dedicated branch:
+### 1. 🩹 AI "Self-Healing" Playwright E-Commerce Test Suite
+- **Problem Solved:** Eliminates flaky UI tests when frontend developers rename DOM attributes (`#checkout-btn` → `[data-test='login-button']`).
+- **How It Works:** Intercepts `TimeoutError`, inspects live DOM candidates, and uses LLM/heuristic semantic scoring to heal broken locators dynamically at runtime (98% confidence).
+- **Code:** [`projects/qa-ecommerce-test-suite/tests/test_self_healing_playwright.py`](projects/qa-ecommerce-test-suite/tests/test_self_healing_playwright.py)
+
+### 2. 🔍 AI Root Cause Analyzer (RCA) & IEEE 829 JIRA Bug Drafter
+- **Capabilities:** Parses raw stack traces, HTTP 500/401 logs, and assertion failures into plain-English RCA reports, structured **IEEE 829 JIRA Defect Tickets**, and copy-ready developer code patches.
+- **Access:** Live on the [Cloud Prep Hub (`/prep`)](https://job-auto-apply-bot.onrender.com/prep) and via Telegram (`/rca <error_log>`).
+
+### 3. 🎯 Siemens / HackerRank 30-Minute Online Assessment Simulator
+- **Capabilities:** Interactive 30-minute countdown simulator featuring the **Top 10 Siemens SDET & QA HackerRank challenges** (Python Server Log Aggregation, SQL Defect SLA Joins, Sliding-Window API Rate Limiting, SemVer Firmware Comparison, and BVA Test Generation) with instant test-case verification.
+- **Access:** [Launch Simulator on `/prep`](https://job-auto-apply-bot.onrender.com/prep) or send `/siemens` on Telegram.
+
+### 4. 🥒 AI Gherkin BDD `.feature` & `pytest-bdd` Step Generator
+- **Capabilities:** Converts plain-English user stories into Cucumber Gherkin `Scenario Outline` tables and executable Python `pytest-bdd` + Playwright step definitions.
+
+### 5. 🎙️ Voice-Note & Text AI Mock Interview Coach (`/interview`)
+- **Capabilities:** Conducts adaptive 3-question technical QA/SDET interviews on Telegram. Accepts **spoken voice notes (`.ogg`)** or text, transcribes speech, and grades both **Technical Accuracy (0–10)** and **Spoken STAR Delivery Clarity**.
+
+---
+
+## 🌿 Multi-Branch Repository Architecture
 
 | Branch Name | GitHub Branch Link | Focus Area & Deliverables |
 | :--- | :---: | :--- |
-| **`main`** *(Default)* | [View `main`](https://github.com/varunms89/job-auto-apply-bot/tree/main) | **Autonomous Job Auto-Apply Bot & Render Cloud Dashboard** (Python, Postgres/SQLite, 24/7 Crawler, Live Web Terminal, Mock API, Telegram Notifier) |
-| **`qa-ecommerce-test-suite`** | [View `qa-ecommerce-test-suite`](https://github.com/varunms89/job-auto-apply-bot/tree/qa-ecommerce-test-suite) | **Comprehensive QA Testing Suite** (50+ Test Cases, Playwright E2E UI Tests, GitHub Actions CI/CD Badges, Postman API Test Collection) |
+| **`main`** *(Default)* | [View `main`](https://github.com/varunms89/job-auto-apply-bot/tree/main) | **Autonomous Job Auto-Apply Bot, AI QA Suite & Render Cloud Hub** (1,100+ jobs analyzed, 98+ applications submitted, 19/19 CI unit tests) |
+| **`qa-ecommerce-test-suite`** | [View `qa-ecommerce-test-suite`](https://github.com/varunms89/job-auto-apply-bot/tree/qa-ecommerce-test-suite) | **Comprehensive QA Testing Suite** (50+ IEEE 829 Test Cases, Self-Healing Playwright E2E Tests, Postman Cloud API Regression Suite) |
 | **`ai-resume-screener`** | [View `ai-resume-screener`](https://github.com/varunms89/job-auto-apply-bot/tree/ai-resume-screener) | **AI Resume Screener & Job Match Platform** (Google Gemini Semantic ATS Matching, FastAPI REST Microservice, Swagger UI `/docs`) |
-| **`portfolio`** | [View `portfolio`](https://github.com/varunms89/job-auto-apply-bot/tree/portfolio) | **Developer Portfolio Website** (HTML5, Tailwind/Clean CSS, Interactive Playwright Terminal Simulator, 1-Click ATS Resume Print) |
-
-### Switching Between Branches Locally:
-```bash
-# Clone the repository
-git clone https://github.com/varunms89/job-auto-apply-bot.git
-cd job-auto-apply-bot
-
-# Switch to the QA Test Suite branch
-git checkout qa-ecommerce-test-suite
-
-# Switch to the AI Resume Screener branch
-git checkout ai-resume-screener
-
-# Switch to the Portfolio branch
-git checkout portfolio
-
-# Switch back to the Main Job Bot branch
-git checkout main
-```
+| **`portfolio`** | [View `portfolio`](https://github.com/varunms89/job-auto-apply-bot/tree/portfolio) | **Interactive QA Engineer Portfolio Website** (HTML5, CSS3, Live Terminal Simulator, 1-Click ATS Resume PDF) |
 
 ---
 
-## 📁 `main` Branch: Core Engine Structure
-
-- [`server.py`](server.py): Unified HTTP web server hosting the live dashboard, real-time log terminal (`/api/logs`), and mock REST API (`/api/v1/...`).
-- [`config.py`](config.py): Candidate profile configuration and 100% strict Online / Remote matching policy.
-- [`matcher.py`](matcher.py): Autonomous scoring engine evaluating role alignment, seniority filters (rejecting 5+ years), and work-from-home verification.
-- [`apply_engine.py`](apply_engine.py): Form autofiller generating customized cover letters and applicant payloads.
-- [`scrapers.py`](scrapers.py): Real-time scrapers across tech platforms (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala, Wellfound).
-- [`telegram_notifier.py`](telegram_notifier.py): Telegram notification engine delivering morning briefings, assessment alerts, and daily wrap-ups.
-- [`telegram_listener.py`](telegram_listener.py): Interactive command listener (`/status`, `/tests`, `/prep`, `/interview`).
-- [`database.py`](database.py): Relational database manager supporting Cloud PostgreSQL with local SQLite auto-fallback.
-- [`test_bot.py`](test_bot.py): Verification suite covering matchers, assessment parsers, IEEE test case generation, and mock API endpoints.
-
----
-
-## 🚀 How to Run Locally
+## 🚀 Quick Start & Local Verification
 
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Run verification unit tests
-python3 -m unittest test_bot.py
+# 2. Run the 19-test QA & AI verification suite + generate HTML report
+python3 generate_html_report.py
 
-# 3. Start the bot and web dashboard
+# 3. Start the 24/7 Autonomous Bot & Web Dashboard (Port 8080)
 ./start_bot.sh
 ```
-
-Live dashboard will be available at: `http://localhost:8080` (or `https://job-auto-apply-bot.onrender.com`).

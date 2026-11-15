@@ -222,5 +222,26 @@ class TestJobBot(unittest.TestCase):
         self.assertIn("@then", res["pytest_steps"])
         print("\n[Test AI Gherkin BDD Generator] Verified Gherkin feature file and pytest-bdd step definitions.")
 
+    def test_siemens_oa_simulator(self):
+        from prep_assistant import SIEMENS_OA_CHALLENGES, evaluate_siemens_oa_submission
+        self.assertEqual(len(SIEMENS_OA_CHALLENGES), 10)
+        opt_code = SIEMENS_OA_CHALLENGES[0]["optimal_solution"]
+        res = evaluate_siemens_oa_submission(1, opt_code)
+        self.assertTrue(res["passed"])
+        self.assertGreaterEqual(res["score"], 85)
+        print(f"\n[Test Siemens OA Simulator] Verified 10 HackerRank challenges & code evaluator (Score: {res['score']}/100).")
+
+    def test_voice_interview_coach(self):
+        from prep_assistant import transcribe_and_evaluate_voice_interview
+        res = transcribe_and_evaluate_voice_interview(
+            b"mock_ogg_bytes",
+            question_id="1",
+            fallback_transcript="I would reproduce the bug with exact steps, attach Chrome DevTools network logs and screenshots, and verify against the SRS requirement document before escalating to the QA Lead."
+        )
+        self.assertGreaterEqual(res["score"], 7.5)
+        self.assertIn("voice_delivery", res)
+        self.assertGreaterEqual(res["voice_delivery"]["clarity_score"], 8.0)
+        print(f"\n[Test Voice Interview Coach] Verified voice transcript & delivery score: {res['voice_delivery']['clarity_score']}/10")
+
 if __name__ == "__main__":
     unittest.main()

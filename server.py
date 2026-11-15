@@ -287,8 +287,32 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     data = json.loads(post_data)
                 else:
                     data = {k: v[0] for k, v in parse_qs(post_data).items()}
-                story = data.get("story", "E-Commerce Discount Coupon")
+                story = data.get("story") or data.get("feature") or "E-Commerce Discount Coupon"
                 result = generate_bdd_feature(story)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode('utf-8'))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+                return
+
+        elif parsed_path.path == "/api/siemens-oa/evaluate":
+            try:
+                from prep_assistant import evaluate_siemens_oa_submission
+                if 'application/json' in self.headers.get('Content-Type', ''):
+                    data = json.loads(post_data) if post_data else {}
+                else:
+                    data = {k: v[0] for k, v in parse_qs(post_data).items()}
+                challenge_id = int(data.get("challenge_id", 1))
+                user_code = data.get("code", "")
+                result = evaluate_siemens_oa_submission(challenge_id, user_code)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self._send_cors_headers()
@@ -308,6 +332,15 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed_path = urlparse(self.path)
+
+        if parsed_path.path == "/api/siemens-oa/challenges":
+            from prep_assistant import SIEMENS_OA_CHALLENGES
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "challenges": SIEMENS_OA_CHALLENGES}).encode("utf-8"))
+            return
 
         # MOCK REST API FOR POSTMAN QA TEST SUITE
         if parsed_path.path == "/api/v1/products":
@@ -434,6 +467,24 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.write(b"<h1>Resume not found.</h1>")
             return
 
+        if parsed_path.path == "/test-report":
+            report_path = os.path.join(os.path.dirname(__file__), "test-report.html")
+            if not os.path.exists(report_path):
+                try:
+                    from generate_html_report import run_suite_and_generate_html
+                    run_suite_and_generate_html(report_path)
+                except Exception:
+                    pass
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            if os.path.exists(report_path):
+                with open(report_path, "r", encoding="utf-8") as rf:
+                    self.wfile.write(rf.read().encode("utf-8"))
+            else:
+                self.wfile.write(b"<h1>Test report generating...</h1>")
+            return
+
         if parsed_path.path == "/prep":
             # Preparation & Practice Hub
             self.render_prep_hub()
@@ -480,6 +531,80 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
             </div>
             """)
         quiz_sections = "".join(quiz_cards)
+        from prep_assistant import SIEMENS_OA_CHALLENGES
+        siemens_json = json.dumps(SIEMENS_OA_CHALLENGES)
+
+        siemens_tab_html = """
+                <!-- Siemens / HackerRank OA Simulator Tab -->
+                <div class="tab-content" id="tab-siemens">
+                    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; padding: 20px 24px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #93c5fd; font-weight: 700;">🎯 Target Assessment: Siemens HackerRank OA (Due Nov 18)</div>
+                            <h2 style="margin: 4px 0 6px 0; font-size: 1.35rem;">Siemens SDET & QA 30-Minute Online Assessment Simulator</h2>
+                            <div style="font-size: 0.88rem; color: #cbd5e1;">Top 10 curated Python Log Parsing, SQL Joins, API Rate-Limiting & Boundary Value challenges.</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); padding: 12px 18px; border-radius: 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="font-size: 0.75rem; color: #cbd5e1; margin-bottom: 4px;">⏱️ TIME REMAINING</div>
+                            <div id="oaTimerDisplay" style="font-size: 1.65rem; font-weight: 800; font-family: monospace; color: #fde047;">30:00</div>
+                            <div style="display: flex; gap: 6px; margin-top: 8px; justify-content: center;">
+                                <button onclick="startOaTimer()" id="startTimerBtn" style="background: #22c55e; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">▶ Start</button>
+                                <button onclick="resetOaTimer()" style="background: #475569; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">↺ Reset</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: 18px 22px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <label style="font-weight: 700; color: #0f172a;">Select Challenge (1–10):</label>
+                                <select id="siemensChallengeSelect" onchange="loadSiemensChallenge(this.value)" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600; font-size: 0.92rem; color: #0f172a;"></select>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span id="siemensCategoryBadge" style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700;">Category</span>
+                                <span id="siemensDiffBadge" style="background: #fef3c7; color: #b45309; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700;">Medium</span>
+                            </div>
+                        </div>
+
+                        <div id="siemensProblemText" style="background: #f8fafc; padding: 14px 16px; border-radius: 6px; border-left: 4px solid #2563eb; color: #1e293b; font-size: 0.93rem; line-height: 1.55; margin-bottom: 14px; white-space: pre-line;"></div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                            <div style="background: #0f172a; color: #e2e8f0; padding: 10px 14px; border-radius: 6px; font-family: monospace; font-size: 0.82rem;">
+                                <div style="color: #94a3b8; font-weight: bold; margin-bottom: 4px;">📥 SAMPLE INPUT:</div>
+                                <pre id="siemensSampleIn" style="margin: 0; white-space: pre-wrap;"></pre>
+                            </div>
+                            <div style="background: #0f172a; color: #a7f3d0; padding: 10px 14px; border-radius: 6px; font-family: monospace; font-size: 0.82rem;">
+                                <div style="color: #94a3b8; font-weight: bold; margin-bottom: 4px;">📤 EXPECTED OUTPUT:</div>
+                                <pre id="siemensSampleOut" style="margin: 0; white-space: pre-wrap;"></pre>
+                            </div>
+                        </div>
+
+                        <label style="font-weight: 700; font-size: 0.9rem; color: #0f172a; display: block; margin-bottom: 6px;">💻 Your Python / SQL Solution Editor:</label>
+                        <textarea id="siemensCodeEditor" style="width: 100%; height: 180px; background: #0f172a; color: #f8fafc; padding: 12px 14px; font-family: monospace; font-size: 0.88rem; border-radius: 6px; border: 1px solid #334155; box-sizing: border-box; line-height: 1.45; margin-bottom: 12px;"></textarea>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="toggleSiemensHint()" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">💡 Show Hint</button>
+                                <button onclick="showSiemensOptimal()" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">🔓 Load Optimal Solution</button>
+                            </div>
+                            <button onclick="submitSiemensCode()" style="background: #16a34a; color: white; border: none; padding: 10px 22px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.92rem;">▶️ Run & Verify Against Test Cases</button>
+                        </div>
+
+                        <div id="siemensHintBox" style="display: none; margin-top: 12px; padding: 10px 14px; background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; font-size: 0.88rem; border-radius: 4px;"></div>
+                    </div>
+
+                    <div id="siemensEvalResult" style="display: none;">
+                        <div class="prep-card" id="siemensEvalCard" style="border-left-color: #16a34a;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h3 id="siemensEvalStatus" style="margin: 0; border: none; padding: 0;">Verification Result</h3>
+                                <span id="siemensEvalScore" style="background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 9999px; font-weight: 800; font-size: 0.9rem;">100 / 100</span>
+                            </div>
+                            <p id="siemensEvalFeedback" style="color: #334155; font-size: 0.92rem; margin: 8px 0 12px 0;"></p>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: #0f172a; margin-bottom: 6px;">🏆 Reference Optimal HackerRank Solution:</div>
+                            <pre id="siemensOptimalCode" style="background: #0f172a; color: #a7f3d0; padding: 14px; border-radius: 6px; font-family: monospace; font-size: 0.84rem; overflow-x: auto; margin: 0;"></pre>
+                        </div>
+                    </div>
+                </div>
+        """
 
         html = f"""
         <!DOCTYPE html>
@@ -688,10 +813,95 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     }});
                 }}
 
+                const SIEMENS_CHALLENGES = {siemens_json};
+                let oaSecondsLeft = 30 * 60;
+                let oaTimerInterval = null;
+
+                function formatOaTime(sec) {{
+                    let m = Math.floor(sec / 60);
+                    let s = sec % 60;
+                    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                }}
+
+                function startOaTimer() {{
+                    if (oaTimerInterval) return;
+                    document.getElementById('startTimerBtn').innerText = '⏳ Running...';
+                    oaTimerInterval = setInterval(() => {{
+                        if (oaSecondsLeft > 0) {{
+                            oaSecondsLeft--;
+                            document.getElementById('oaTimerDisplay').innerText = formatOaTime(oaSecondsLeft);
+                        }} else {{
+                            clearInterval(oaTimerInterval);
+                            oaTimerInterval = null;
+                            document.getElementById('oaTimerDisplay').innerText = "00:00 (TIME UP)";
+                        }}
+                    }}, 1000);
+                }}
+
+                function resetOaTimer() {{
+                    if (oaTimerInterval) {{
+                        clearInterval(oaTimerInterval);
+                        oaTimerInterval = null;
+                    }}
+                    oaSecondsLeft = 30 * 60;
+                    document.getElementById('oaTimerDisplay').innerText = "30:00";
+                    document.getElementById('startTimerBtn').innerText = '▶ Start';
+                }}
+
+                function initSiemensSimulator() {{
+                    let sel = document.getElementById('siemensChallengeSelect');
+                    if (!sel) return;
+                    sel.innerHTML = SIEMENS_CHALLENGES.map(c => `<option value="${{c.id}}">${{c.title}} (${{c.difficulty}})</option>`).join('');
+                    loadSiemensChallenge(1);
+                }}
+
+                function loadSiemensChallenge(cid) {{
+                    let c = SIEMENS_CHALLENGES.find(x => x.id === parseInt(cid)) || SIEMENS_CHALLENGES[0];
+                    document.getElementById('siemensCategoryBadge').innerText = c.category;
+                    document.getElementById('siemensDiffBadge').innerText = c.difficulty;
+                    document.getElementById('siemensProblemText').innerText = c.problem_statement;
+                    document.getElementById('siemensSampleIn').innerText = c.sample_input;
+                    document.getElementById('siemensSampleOut').innerText = c.sample_output;
+                    document.getElementById('siemensCodeEditor').value = c.starter_code;
+                    document.getElementById('siemensHintBox').innerText = "💡 Hint: " + c.hint;
+                    document.getElementById('siemensHintBox').style.display = 'none';
+                    document.getElementById('siemensEvalResult').style.display = 'none';
+                }}
+
+                function toggleSiemensHint() {{
+                    let box = document.getElementById('siemensHintBox');
+                    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+                }}
+
+                function showSiemensOptimal() {{
+                    let cid = document.getElementById('siemensChallengeSelect').value;
+                    let c = SIEMENS_CHALLENGES.find(x => x.id === parseInt(cid)) || SIEMENS_CHALLENGES[0];
+                    document.getElementById('siemensCodeEditor').value = c.optimal_solution;
+                }}
+
+                function submitSiemensCode() {{
+                    let cid = document.getElementById('siemensChallengeSelect').value;
+                    let code = document.getElementById('siemensCodeEditor').value;
+                    fetch('/api/siemens-oa/evaluate', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ challenge_id: parseInt(cid), code: code }})
+                    }}).then(r => r.json()).then(data => {{
+                        document.getElementById('siemensEvalResult').style.display = 'block';
+                        let card = document.getElementById('siemensEvalCard');
+                        card.style.borderLeftColor = data.passed ? '#16a34a' : '#f59e0b';
+                        document.getElementById('siemensEvalStatus').innerText = data.test_cases_passed || 'Evaluated';
+                        document.getElementById('siemensEvalScore').innerText = (data.score || 0) + ' / 100';
+                        document.getElementById('siemensEvalFeedback').innerText = data.feedback || '';
+                        document.getElementById('siemensOptimalCode').innerText = data.optimal_solution || '';
+                    }});
+                }}
+
                 window.addEventListener('DOMContentLoaded', () => {{
                     runGenerator();
                     setRcaAndRun("playwright._impl._errors.TimeoutError: Locator.click: Timeout 5000ms exceeded waiting for locator('#checkout-button')");
                     setBddAndRun("E-Commerce Discount Coupon Checkout");
+                    initSiemensSimulator();
                 }});
             </script>
         </head>
@@ -712,6 +922,7 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
 
                 <div class="tabs">
                     <button class="tab-btn active" id="btn-qa" onclick="switchTab('qa')">🧪 Software Testing & QA</button>
+                    <button class="tab-btn" id="btn-siemens" onclick="switchTab('siemens')" style="border-color:#2563eb; color:#1d4ed8;">🎯 Siemens OA Simulator (Nov 18)</button>
                     <button class="tab-btn" id="btn-rca" onclick="switchTab('rca')">🔍 AI Root Cause & JIRA</button>
                     <button class="tab-btn" id="btn-bdd" onclick="switchTab('bdd')">🥒 AI Gherkin BDD Generator</button>
                     <button class="tab-btn" id="btn-generator" onclick="switchTab('generator')">⚡ AI Test Case Generator</button>
@@ -726,6 +937,8 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                     <p style="color: #475569; margin-bottom: 15px;">Focus on test case writing, bug life cycle transitions, severity vs priority, and API status codes.</p>
                     {qa_sections}
                 </div>
+
+                {siemens_tab_html}
 
                 <!-- AI Root Cause Analyzer & JIRA Tab -->
                 <div class="tab-content" id="tab-rca">

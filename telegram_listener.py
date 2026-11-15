@@ -105,9 +105,10 @@ def handle_command(text: str, chat_id: str):
             "🤖 <b>JOB & ASSESSMENT BOT COMMANDS</b>\n"
             "━━━━━━━━━━━━━━━━━━━\n"
             "• Tap any button below or type a command:\n"
-            "• <b>/interview</b> - Start adaptive technical mock interview\n"
-            "• <b>/rca &lt;error&gt;</b> - AI Root Cause Analysis & JIRA Ticket Drafter\n"
-            "• <b>/bdd &lt;story&gt;</b> - AI Gherkin BDD Feature & Pytest Generator\n"
+            "• <b>/siemens [1-10]</b> - 🎯 Siemens HackerRank OA Simulator & Solutions\n"
+            "• <b>/interview</b> - 🎙️ Voice & Text AI Mock Interview Coach\n"
+            "• <b>/rca &lt;error&gt;</b> - 🔍 AI Root Cause Analysis & JIRA Ticket Drafter\n"
+            "• <b>/bdd &lt;story&gt;</b> - 🥒 AI Gherkin BDD Feature & Pytest Generator\n"
             "• <b>/status</b> - Current system stats & application counts\n"
             "• <b>/tests</b> - Show pending online tests & interview links\n"
             "• <b>/hr</b> - HR phone screening scripts & model answers\n"
@@ -314,15 +315,109 @@ def handle_command(text: str, chat_id: str):
         )
         send_telegram_message(msg, chat_id=chat_id)
 
+    elif cmd.startswith("/siemens"):
+        from prep_assistant import SIEMENS_OA_CHALLENGES
+        parts = text.split(maxsplit=1)
+        idx = int(parts[1]) if (len(parts) > 1 and parts[1].isdigit()) else 1
+        challenge = next((c for c in SIEMENS_OA_CHALLENGES if c["id"] == idx), SIEMENS_OA_CHALLENGES[0])
+        msg = (
+            f"🎯 <b>SIEMENS HACKERRANK OA CHALLENGE ({challenge['id']}/10)</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>{challenge['title']}</b>\n"
+            f"🏷️ <b>Category:</b> <code>{challenge['category']}</code> | <b>Difficulty:</b> <code>{challenge['difficulty']}</code>\n\n"
+            f"📝 <b>Problem:</b>\n{challenge['problem_statement']}\n\n"
+            f"💡 <b>Hint:</b> {challenge['hint']}\n\n"
+            f"✅ <b>Optimal Reference Solution:</b>\n<pre>{challenge['optimal_solution']}</pre>\n\n"
+            f"⏱️ <a href='https://job-auto-apply-bot.onrender.com/prep'>Launch 30-Minute Interactive Simulator on Prep Hub ↗</a>\n"
+            f"<i>Tip: Send /siemens 2, /siemens 3 ... /siemens 10 for more challenges!</i>"
+        )
+        send_telegram_message(msg, chat_id=chat_id)
+
     else:
         send_telegram_message("❓ Unknown command. Send <b>/help</b> or <b>/status</b> to see available commands.", chat_id=chat_id)
 
+
+def download_telegram_voice(file_id: str) -> bytes:
+    """
+    Downloads a Telegram voice note (.ogg) via the Bot getFile API.
+    """
+    if not TELEGRAM_BOT_TOKEN or not file_id:
+        return b""
+    try:
+        meta_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}"
+        with urllib.request.urlopen(meta_url, timeout=15) as resp:
+            meta = json.loads(resp.read().decode("utf-8"))
+            if not meta.get("ok"):
+                return b""
+            file_path = meta["result"]["file_path"]
+        file_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+        with urllib.request.urlopen(file_url, timeout=20) as f_resp:
+            return f_resp.read()
+    except Exception:
+        return b""
+
+
+def handle_voice_message(file_id: str, chat_id: str, audio_bytes: bytes = None, fallback_transcript: str = "") -> dict:
+    """
+    Processes a voice message during a Telegram Mock Interview session.
+    Transcribes the audio, evaluates technical accuracy + spoken delivery, and replies on Telegram.
+    """
+    from prep_assistant import transcribe_and_evaluate_voice_interview
+
+    if chat_id not in interview_sessions:
+        interview_sessions[chat_id] = {"step": 0, "scores": []}
+
+    sess = interview_sessions[chat_id]
+    step = sess["step"]
+    q = INTERVIEW_QUESTIONS[step]
+
+    raw_audio = audio_bytes if audio_bytes is not None else download_telegram_voice(file_id)
+    eval_res = transcribe_and_evaluate_voice_interview(raw_audio, str(q["id"]), fallback_transcript=fallback_transcript)
+
+    score = eval_res.get("score", 8.0)
+    sess["scores"].append(score)
+    delivery = eval_res.get("voice_delivery", {})
+    matched_str = ", ".join(eval_res.get("matched_keywords", [])) or "Strong domain terminology"
+    missing_str = ", ".join(eval_res.get("missing_keywords", [])) or "None!"
+
+    feedback = (
+        f"🎙️ <b>VOICE INTERVIEW AI EVALUATION (Q{step+1}):</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📝 <b>Transcript:</b> <i>\"{eval_res.get('transcript', '')}\"</i>\n\n"
+        f"⭐️ <b>Technical QA Score:</b> <code>{score}/10</code>\n"
+        f"🗣️ <b>Spoken Clarity Score:</b> <code>{delivery.get('clarity_score', 8.5)}/10</code> ({delivery.get('pacing', 'Good pacing')})\n"
+        f"💬 <b>Feedback:</b> {eval_res.get('feedback', '')}\n\n"
+        f"✅ <b>Keywords Used:</b> <code>{matched_str}</code>\n"
+        f"⚠️ <b>Keywords to Add:</b> <code>{missing_str}</code>\n\n"
+        f"🎓 <b>Senior SDET Model Answer:</b>\n<i>\"{eval_res.get('model_answer', q['model_answer'])}\"</i>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+    )
+
+    if step < len(INTERVIEW_QUESTIONS) - 1:
+        sess["step"] += 1
+        next_q = INTERVIEW_QUESTIONS[sess["step"]]
+        feedback += f"\n<b>{next_q['question']}</b>\n\n<i>Send a 🎙️ Voice Note or type your answer below:</i>"
+        send_telegram_message(feedback, chat_id=chat_id)
+    else:
+        total_score = sum(sess["scores"])
+        avg = round(total_score / len(sess["scores"]), 1)
+        feedback += (
+            f"\n🏁 <b>VOICE MOCK INTERVIEW COMPLETE!</b>\n"
+            f"📊 <b>Final Average:</b> <code>{avg}/10</code>\n"
+            f"Send <b>/interview</b> anytime to practice again!"
+        )
+        del interview_sessions[chat_id]
+        send_telegram_message(feedback, chat_id=chat_id)
+
+    return eval_res
+
+
 def run_telegram_listener():
     """
-    Long-polling loop for incoming Telegram bot messages.
+    Long-polling loop for incoming Telegram bot messages (supports text & voice notes).
     """
     offset = None
-    print("🤖 Telegram Command Listener started (Listening for /status, /tests, /prep)...")
+    print("🤖 Telegram Command Listener started (Listening for /status, /siemens, /interview, voice notes)...")
     
     while True:
         try:
@@ -342,10 +437,14 @@ def run_telegram_listener():
                         
                         chat_id = str(msg.get("chat", {}).get("id"))
                         text = msg.get("text", "")
+                        voice = msg.get("voice") or msg.get("audio")
                         
                         # Only respond to authorized user
                         if chat_id == AUTHORIZED_CHAT_ID:
-                            handle_command(text, chat_id)
+                            if voice and voice.get("file_id"):
+                                handle_voice_message(voice["file_id"], chat_id)
+                            elif text:
+                                handle_command(text, chat_id)
         except Exception:
             time.sleep(5)
 
