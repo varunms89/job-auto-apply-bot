@@ -252,5 +252,16 @@ class TestJobBot(unittest.TestCase):
         self.assertGreaterEqual(res["voice_delivery"]["clarity_score"], 8.0)
         print(f"\n[Test Voice Interview Coach] Verified voice transcript & delivery score: {res['voice_delivery']['clarity_score']}/10")
 
+    def test_bot_admin_console(self):
+        from bot_admin import get_admin_overview, save_bot_settings, render_admin_dashboard_html
+        overview = get_admin_overview()
+        self.assertEqual(overview["status"], "success")
+        self.assertIn("metrics", overview)
+        updated = save_bot_settings({"min_match_score": 35.0})
+        self.assertEqual(updated["min_match_score"], 35.0)
+        html = render_admin_dashboard_html()
+        self.assertIn("Bot Administration & Management Console", html)
+        print("\n[Test Bot Admin Console] Verified /admin overview API, dynamic settings persistence, and dashboard UI.")
+
 if __name__ == "__main__":
     unittest.main()

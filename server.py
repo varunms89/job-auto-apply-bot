@@ -327,11 +327,117 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
                 return
 
+        elif parsed_path.path == "/api/admin/settings":
+            try:
+                from bot_admin import save_bot_settings
+                data = json.loads(post_data) if post_data else {}
+                updated = save_bot_settings(data)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "settings": updated}).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+
+        elif parsed_path.path == "/api/admin/db-action":
+            try:
+                from bot_admin import execute_db_admin_action
+                data = json.loads(post_data) if post_data else {}
+                action = data.get("action", "")
+                res = execute_db_admin_action(action, data)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(res).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+
+        elif parsed_path.path == "/api/admin/action":
+            try:
+                from bot_admin import trigger_immediate_scan_async
+                data = json.loads(post_data) if post_data else {}
+                act = data.get("action", "")
+                res = {"status": "success", "message": f"Executed {act}"}
+
+                if act == "scan":
+                    res = trigger_immediate_scan_async()
+                elif act == "telegram_report":
+                    from telegram_notifier import dispatch_report
+                    dispatch_report()
+                    res["message"] = "Live status report dispatched to Telegram!"
+                elif act == "morning_briefing":
+                    from telegram_notifier import send_morning_briefing
+                    send_morning_briefing()
+                    res["message"] = "Morning Briefing dispatched to Telegram!"
+                elif act == "evening_wrapup":
+                    from telegram_notifier import send_evening_wrapup
+                    send_evening_wrapup()
+                    res["message"] = "Evening Wrap-Up dispatched to Telegram!"
+                elif act == "scan_email":
+                    from email_monitor import check_gmail_inbox
+                    found = check_gmail_inbox()
+                    res["message"] = f"Gmail inbox checked ({found} new assessment invites detected)."
+                elif act == "run_tests":
+                    from generate_html_report import run_suite_and_generate_html
+                    rep = run_suite_and_generate_html()
+                    res["message"] = f"CI Suite Verified: {rep['passed']}/{rep['total']} tests passed ({rep['pass_rate']}%)."
+                elif act == "custom_telegram":
+                    from telegram_notifier import send_telegram_message
+                    msg_txt = data.get("message", "")
+                    if msg_txt:
+                        send_telegram_message(f"📣 <b>ADMIN CONSOLE MESSAGE</b>\n━━━━━━━━━━━━━━━━━━━\n{msg_txt}")
+                    res["message"] = "Custom message sent to Telegram!"
+                elif act == "clear_logs":
+                    LOG_RING_BUFFER.clear()
+                    res["message"] = "Terminal log buffer cleared."
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps(res).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+
         self.send_response(404)
         self.end_headers()
 
     def do_GET(self):
         parsed_path = urlparse(self.path)
+
+        if parsed_path.path == "/api/admin/overview":
+            from bot_admin import get_admin_overview
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(get_admin_overview()).encode("utf-8"))
+            return
+
+        if parsed_path.path == "/admin":
+            from bot_admin import render_admin_dashboard_html
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(render_admin_dashboard_html().encode("utf-8"))
+            return
 
         if parsed_path.path == "/api/siemens-oa/challenges":
             from prep_assistant import SIEMENS_OA_CHALLENGES
@@ -910,9 +1016,10 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div style="font-weight: bold; font-size: 1.1rem;">🤖 Job Bot Hub</div>
                 <div>
                     <a href="/">⬅ Back to Job Dashboard</a>
-                    <a href="/resume" target="_blank">📄 ATS Resume</a>
+                    <a href="/admin" style="color:#fde047; font-weight:700;">⚙️ Bot Admin Panel</a>
                     <a href="/prep" class="active">📚 Preparation & Practice</a>
-                    <a href="https://t.me/" target="_blank">📱 Telegram Alerts</a>
+                    <a href="/test-report" target="_blank">🧪 CI/CD Report</a>
+                    <a href="/resume" target="_blank">📄 ATS Resume</a>
                 </div>
             </nav>
 
@@ -1258,10 +1365,11 @@ class HealthCheckAndDashboardHandler(BaseHTTPRequestHandler):
                 <div style="font-weight: bold; font-size: 1.1rem;">🤖 Job Auto-Apply Bot & Test Hub</div>
                 <div>
                     <a href="/" class="active">📊 Dashboard</a>
-                    <a href="/resume" target="_blank">📄 ATS Resume</a>
+                    <a href="/admin" style="color:#fde047; font-weight:700;">⚙️ Bot Admin Panel</a>
                     <a href="/prep">📚 Preparation Hub (QA / Python / AI)</a>
+                    <a href="/test-report" target="_blank">🧪 CI/CD Report</a>
+                    <a href="/resume" target="_blank">📄 ATS Resume</a>
                     <a href="javascript:void(0)" onclick="openLinkedInDrafter()" style="color:#38bdf8; font-weight:600;">📢 Share on LinkedIn</a>
-                    <a href="/healthz">🩺 Health Check</a>
                 </div>
             </nav>
 

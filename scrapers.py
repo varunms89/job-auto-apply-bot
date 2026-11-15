@@ -382,15 +382,30 @@ def search_fresher_jobs() -> List[Dict]:
 
 def search_all_portals() -> List[Dict]:
     results = []
-    print("  -> Querying open tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala, Wellfound Startups, Freshers Portals)...")
-    results.extend(search_remoteok_jobs())
-    results.extend(search_arbeitnow_jobs())
-    results.extend(search_remotive_jobs())
-    results.extend(search_jobicy_jobs())
-    results.extend(search_linkedin_jobs())
-    results.extend(search_internshala_internships())
-    results.extend(search_startup_remote_jobs())
-    results.extend(search_fresher_jobs())
+    enabled = {}
+    try:
+        from bot_admin import load_bot_settings
+        enabled = load_bot_settings().get("enabled_portals", {})
+    except Exception:
+        pass
+
+    print("  -> Querying enabled tech API job feeds (RemoteOK, ArbeitNow, Remotive, Jobicy, LinkedIn, Internshala, Wellfound Startups, Freshers Portals)...")
+    if enabled.get("RemoteOK", True):
+        results.extend(search_remoteok_jobs())
+    if enabled.get("ArbeitNow", True):
+        results.extend(search_arbeitnow_jobs())
+    if enabled.get("Remotive", True):
+        results.extend(search_remotive_jobs())
+    if enabled.get("Jobicy", True):
+        results.extend(search_jobicy_jobs())
+    if enabled.get("LinkedIn", True):
+        results.extend(search_linkedin_jobs())
+    if enabled.get("Internshala", True):
+        results.extend(search_internshala_internships())
+    if enabled.get("Wellfound_Himalayas", True):
+        results.extend(search_startup_remote_jobs())
+    if enabled.get("Freshersworld", True):
+        results.extend(search_fresher_jobs())
 
     # Deduplicate
     seen = set()

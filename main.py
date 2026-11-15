@@ -54,13 +54,26 @@ def run_job_bot_cycle(auto_apply: bool = True):
             status="DISCOVERED"
         )
 
-        # Qualification threshold: Score >= 40 indicates strong Tester / QA Fresher match
-        if score >= 35.0:
+        # Dynamic threshold and auto-apply toggle from Bot Admin Panel
+        min_score = 35.0
+        effective_auto_apply = auto_apply
+        only_on_new = True
+        try:
+            from bot_admin import load_bot_settings
+            cfg = load_bot_settings()
+            min_score = float(cfg.get("min_match_score", 35.0))
+            if not cfg.get("auto_apply_enabled", True):
+                effective_auto_apply = False
+            only_on_new = cfg.get("telegram_reports_only_on_new", True)
+        except Exception:
+            pass
+
+        if score >= min_score:
             matched_count += 1
             print(f"\n🎯 [MATCH FOUND] Score: {score}/100 | {title} at {company}")
             print(f"   Reason: {reasons}")
             
-            if auto_apply:
+            if effective_auto_apply:
                 success = apply_engine.apply_to_job(job)
                 if success:
                     applied_count += 1
@@ -72,8 +85,8 @@ def run_job_bot_cycle(auto_apply: bool = True):
     print(f"  - Applications Prepared/Processed: {applied_count}")
     print("==================================================================")
 
-    # Automatically dispatch report to Telegram only when new matching jobs are discovered
-    if applied_count > 0:
+    # Automatically dispatch report to Telegram only when new matching jobs are discovered (or verbose mode)
+    if applied_count > 0 or not only_on_new:
         try:
             from telegram_notifier import dispatch_report
             print("\n📲 Dispatching new matches report to Telegram...")

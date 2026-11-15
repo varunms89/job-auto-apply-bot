@@ -1,0 +1,33 @@
+{
+  "bot_enabled": true,
+  "auto_apply_enabled": true,
+  "strict_remote_only": true,
+  "min_match_score": 35.0,
+  "scan_interval_minutes": 60,
+  "telegram_reports_only_on_new": true,
+  "candidate_name": "VARUN M S",
+  "candidate_email": "msvarun89@gmail.com",
+  "candidate_phone": "8861639284",
+  "candidate_github": "https://github.com/varunms89",
+  "candidate_linkedin": "https://www.linkedin.com/in/varun-m-s-8861639284",
+  "enabled_portals": {
+    "RemoteOK": true,
+    "ArbeitNow": true,
+    "Remotive": true,
+    "Jobicy": true,
+    "LinkedIn": true,
+    "Internshala": true,
+    "Wellfound_Himalayas": true,
+    "Freshersworld": true
+  },
+  "target_keywords": [
+    "Software Tester",
+    "QA Intern",
+    "Manual Tester",
+    "Quality Assurance",
+    "Playwright Automation",
+    "Python Intern",
+    "AI Intern",
+    "Machine Learning Intern"
+  ]
+}
